@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import List
@@ -6,6 +6,7 @@ from ...core.database import get_db
 from ...models.bookmark import Bookmark
 from ...schemas.bookmark import BookmarkCreate, BookmarkUpdate, BookmarkResponse, URLMetadataRequest, URLMetadataResponse
 from ...services.metadata_extractor import extract_metadata
+from ...services.background_tasks import process_bookmark_ai
 from ...core.auth import get_current_user
 
 router = APIRouter()
@@ -18,7 +19,7 @@ async def get_metadata(request: URLMetadataRequest, current_user: str = Depends(
     return data
 
 @router.post("/", response_model=BookmarkResponse)
-async def create_bookmark(bookmark: BookmarkCreate, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+async def create_bookmark(bookmark: BookmarkCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
     db_bookmark = Bookmark(
         user_id=current_user,
         url=str(bookmark.url),
@@ -33,6 +34,10 @@ async def create_bookmark(bookmark: BookmarkCreate, db: Session = Depends(get_db
     db.add(db_bookmark)
     await db.commit()
     await db.refresh(db_bookmark)
+    
+    # Spawn AI tagging and summarization in background
+    background_tasks.add_task(process_bookmark_ai, db_bookmark.id, db_bookmark.url, db_bookmark.title or "", db_bookmark.description or "")
+    
     return db_bookmark
 
 @router.get("/", response_model=List[BookmarkResponse])

@@ -7,7 +7,7 @@ import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBo
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import { createTag, addTagToBookmark } from '../services/tags';
 import type { Bookmark } from '../services/bookmarks';
-import { ExternalLink, Plus, Link as LinkIcon, Loader2, Trash2, Edit2, Tag as TagIcon } from 'lucide-react';
+import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -266,6 +266,18 @@ const Dashboard = () => {
                   <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                     {bookmark.description}
                   </p>
+                )}
+                
+                {bookmark.summary && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-md p-2.5 mb-3">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">AI Summary</span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">
+                      {bookmark.summary}
+                    </p>
+                  </div>
                 )}
                 
                 {bookmark.tags && bookmark.tags.length > 0 && (
