@@ -22,7 +22,7 @@ const ProtectedLayout = () => {
       {/* Sidebar will go here */}
       <div className="w-64 border-r bg-card flex flex-col p-4">
         <h1 className="text-xl font-bold text-primary mb-8 flex items-center gap-2">
-          <img src="/Clipnest_Logo_transparent.png" alt="ClipNest Logo" className="w-8 h-8 object-contain" />
+          <img src="/Clipnest_Logo_transparent.png" alt="ClipNest Logo" className="w-10 h-10 object-contain scale-125 -ml-1" />
           ClipNest
         </h1>
         <nav className="flex-1 space-y-2">
