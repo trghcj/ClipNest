@@ -4,8 +4,15 @@ from urllib.parse import urlparse
 
 async def extract_metadata(url: str) -> dict:
     try:
+        parsed_url = urlparse(url)
+        if parsed_url.scheme not in ("http", "https"):
+            return {}
+            
+        # Reconstruct URL to prevent SSRF tricks
+        safe_url = parsed_url.geturl()
+        
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            response = await client.get(url)
+            response = await client.get(safe_url)
             response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "lxml")

@@ -4,6 +4,7 @@ import httpx
 import re
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
+from urllib.parse import urlparse
 from google import genai
 from pydantic import BaseModel
 from typing import List
@@ -66,7 +67,10 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
     is_youtube = False
 
     # Check if URL is a YouTube video
-    if "youtube.com" in url or "youtu.be" in url:
+    parsed_url = urlparse(url)
+    host = (parsed_url.hostname or "").lower()
+    is_youtube_host = host == "youtube.com" or host.endswith(".youtube.com") or host == "youtu.be"
+    if is_youtube_host:
         video_id = extract_youtube_video_id(url)
         if video_id:
             try:
