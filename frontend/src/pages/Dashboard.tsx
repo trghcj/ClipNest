@@ -16,8 +16,12 @@ const Dashboard = () => {
   const currentCollectionId = searchParams.get('collectionId');
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUrl, setNewUrl] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(() => {
+    return !!searchParams.get('saveUrl');
+  });
+  const [newUrl, setNewUrl] = useState(() => {
+    return searchParams.get('saveUrl') || '';
+  });
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
 
@@ -58,6 +62,12 @@ const Dashboard = () => {
       setNewUrl('');
       setSelectedCollectionId('');
       setIsExtracting(false);
+      
+      if (searchParams.has('saveUrl')) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('saveUrl');
+        window.history.replaceState({}, '', `${window.location.pathname}?${newParams.toString()}`);
+      }
     },
   });
 
