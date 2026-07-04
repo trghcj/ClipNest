@@ -25,6 +25,8 @@ class BookmarkResponse(BookmarkBase):
     user_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    summary: Optional[str] = None
+    content: Optional[str] = None
     tags: List[TagResponse] = []
 
     class Config:

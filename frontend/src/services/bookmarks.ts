@@ -11,6 +11,8 @@ export interface Bookmark {
   content_type: string;
   is_favorite: boolean;
   is_archived: boolean;
+  summary: string | null;
+  content: string | null;
   ai_summary: string | null;
   tags?: { id: string; name: string; is_ai_generated: boolean; created_at: string }[];
   created_at: string;
