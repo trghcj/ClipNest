@@ -7,7 +7,7 @@ import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBo
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import { createTag, addTagToBookmark } from '../services/tags';
 import type { Bookmark } from '../services/bookmarks';
-import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles } from 'lucide-react';
+import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles, Archive, ArchiveRestore } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -43,6 +43,9 @@ const Dashboard = () => {
   });
 
   const filteredBookmarks = bookmarks.filter((b) => {
+    const isArchiveView = searchParams.get('view') === 'archive';
+    const matchesArchive = isArchiveView ? b.is_archived : !b.is_archived;
+
     const matchesQuery = !searchQuery || 
       (b.title?.toLowerCase().includes(searchQuery) || false) || 
       (b.description?.toLowerCase().includes(searchQuery) || false) ||
@@ -52,7 +55,7 @@ const Dashboard = () => {
     const aiMatchesParam = searchParams.get('aiMatches');
     const matchesAi = !aiMatchesParam || aiMatchesParam.split(',').includes(b.id);
 
-    return matchesQuery && matchesAi;
+    return matchesArchive && matchesQuery && matchesAi;
   });
 
   const aiQuery = searchParams.get('aiQuery');
@@ -194,17 +197,20 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Stat Cards */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Total Bookmarks
           </div>
-          <div className="text-3xl font-bold text-foreground">{filteredBookmarks.length}</div>
+          <div className="text-3xl font-bold text-foreground">
+            {bookmarks.filter(b => !b.is_archived).length}
+          </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Unread
           </div>
-          <div className="text-3xl font-bold text-foreground">{filteredBookmarks.filter(b => !b.is_archived).length}</div>
+          <div className="text-3xl font-bold text-foreground">{bookmarks.filter(b => !b.is_archived).length}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
@@ -217,7 +223,7 @@ const Dashboard = () => {
             AI Tags
           </div>
           <div className="text-3xl font-bold text-foreground">
-            {new Set(filteredBookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size}
+            {new Set(bookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size}
           </div>
         </div>
       </div>
@@ -336,10 +342,23 @@ const Dashboard = () => {
                 )}
                 
                 <div className={`mt-auto flex items-center justify-between pt-4 border-t border-border/50 ${(!bookmark.tags || bookmark.tags.length === 0) && !bookmark.description ? 'mt-auto' : ''}`}>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
                     {new Date(bookmark.created_at).toLocaleDateString()}
                   </span>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateBookmarkMutation.mutate({
+                          id: bookmark.id,
+                          updates: { is_archived: !bookmark.is_archived }
+                        });
+                      }}
+                      className={`p-1.5 rounded-md transition-colors ${bookmark.is_archived ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
+                      title={bookmark.is_archived ? "Unarchive" : "Archive"}
+                    >
+                      {bookmark.is_archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                    </button>
                     <button 
                       onClick={(e) => openEditModal(e, bookmark)}
                       className="p-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
@@ -359,7 +378,7 @@ const Dashboard = () => {
                       target="_blank" 
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors ml-1"
                       title="Open Link"
                     >
                       <ExternalLink className="w-4 h-4" />
