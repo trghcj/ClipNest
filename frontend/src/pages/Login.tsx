@@ -34,9 +34,7 @@ const Login = () => {
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
+              <img src="/Clipnest_Logo_transparent.png" alt="ClipNest Logo" className="w-8 h-8 object-contain" />
             </div>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Welcome to ClipNest</h1>
