@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollections, createCollection, updateCollection, deleteCollection } from '../services/collections';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { AISearchModal } from '../components/AISearchModal';
-import { Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, User, Check, X } from 'lucide-react';
+import { Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { auth, logoutUser } from '../services/firebase';
 
