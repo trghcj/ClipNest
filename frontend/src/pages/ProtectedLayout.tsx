@@ -4,12 +4,14 @@ import { useAuthStore } from '../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollections, createCollection } from '../services/collections';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { Plus, Folder, Home, Tag } from 'lucide-react';
+import { AISearchModal } from '../components/AISearchModal';
+import { Plus, Folder, Home, Tag, Sparkles } from 'lucide-react';
 
 const ProtectedLayout = () => {
   const { user, loading } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [isAISearchOpen, setIsAISearchOpen] = useState(false);
   const currentCollectionId = searchParams.get('collectionId');
   const queryClient = useQueryClient();
 
@@ -123,7 +125,7 @@ const ProtectedLayout = () => {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Topbar */}
         <header className="h-16 border-b bg-card flex items-center justify-between px-6">
-          <div className="w-full max-w-xl">
+          <div className="w-full max-w-xl relative flex items-center">
             <input 
               type="text" 
               placeholder="Search bookmarks, tags, notes..." 
@@ -137,8 +139,15 @@ const ProtectedLayout = () => {
                 }
                 navigate({ search: newParams.toString() });
               }}
-              className="w-full bg-muted border-none rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full bg-muted border-none rounded-md pl-4 pr-32 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
+            <button
+              onClick={() => setIsAISearchOpen(true)}
+              className="absolute right-1 top-1 bottom-1 px-3 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors rounded text-xs font-semibold flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Ask AI
+            </button>
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -153,6 +162,11 @@ const ProtectedLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      <AISearchModal 
+        isOpen={isAISearchOpen} 
+        onClose={() => setIsAISearchOpen(false)} 
+      />
     </div>
   );
 };

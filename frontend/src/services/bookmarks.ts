@@ -43,3 +43,8 @@ export const updateBookmark = async (id: string, updates: Partial<Bookmark>): Pr
   const response = await apiClient.put(`bookmarks/${id}`, updates);
   return response.data;
 };
+
+export const aiSearchBookmarks = async (query: string): Promise<{ matching_ids: string[] }> => {
+  const response = await apiClient.post('bookmarks/ai-search', { query });
+  return response.data;
+};
