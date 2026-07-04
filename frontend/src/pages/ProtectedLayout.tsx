@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollections, createCollection, updateCollection, deleteCollection } from '../services/collections';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { AISearchModal } from '../components/AISearchModal';
+import { TagsModal } from '../components/TagsModal';
 import { Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { auth, logoutUser } from '../services/firebase';
@@ -14,6 +15,7 @@ const ProtectedLayout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isAISearchOpen, setIsAISearchOpen] = useState(false);
+  const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
   const currentCollectionId = searchParams.get('collectionId');
   const queryClient = useQueryClient();
 
@@ -207,10 +209,13 @@ const ProtectedLayout = () => {
           </div>
 
           <div className="space-y-1 pt-4">
-            <a href="#" className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-md transition-colors">
+            <button 
+              onClick={() => setIsTagsModalOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-md transition-colors"
+            >
               <Tag className="w-4 h-4" />
               Tags
-            </a>
+            </button>
           </div>
         </nav>
       </div>
@@ -332,6 +337,11 @@ const ProtectedLayout = () => {
       <AISearchModal 
         isOpen={isAISearchOpen} 
         onClose={() => setIsAISearchOpen(false)} 
+      />
+      
+      <TagsModal
+        isOpen={isTagsModalOpen}
+        onClose={() => setIsTagsModalOpen(false)}
       />
     </div>
   );

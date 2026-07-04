@@ -194,7 +194,6 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Stat Cards */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Total Bookmarks
@@ -205,7 +204,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Unread
           </div>
-          <div className="text-3xl font-bold text-foreground">0</div>
+          <div className="text-3xl font-bold text-foreground">{filteredBookmarks.filter(b => !b.is_archived).length}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
@@ -217,7 +216,9 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             AI Tags
           </div>
-          <div className="text-3xl font-bold text-foreground">0</div>
+          <div className="text-3xl font-bold text-foreground">
+            {new Set(filteredBookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size}
+          </div>
         </div>
       </div>
 
