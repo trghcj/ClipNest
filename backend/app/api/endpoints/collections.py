@@ -5,7 +5,7 @@ from typing import List
 from ...core.database import get_db
 from ...models.collection import Collection, CollectionBookmark
 from ...models.bookmark import Bookmark
-from ...schemas.collection import CollectionCreate, CollectionResponse
+from ...schemas.collection import CollectionCreate, CollectionUpdate, CollectionResponse
 from ...schemas.bookmark import BookmarkResponse
 from ...core.auth import get_current_user
 
@@ -28,6 +28,24 @@ async def read_collections(db: Session = Depends(get_db), current_user: str = De
     stmt = select(Collection).where(Collection.user_id == current_user)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+@router.put("/{collection_id}", response_model=CollectionResponse)
+async def update_collection(collection_id: str, updates: CollectionUpdate, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    stmt = select(Collection).where(Collection.id == collection_id, Collection.user_id == current_user)
+    result = await db.execute(stmt)
+    collection = result.scalar_one_or_none()
+    
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+        
+    if updates.name is not None:
+        collection.name = updates.name
+    if updates.description is not None:
+        collection.description = updates.description
+        
+    await db.commit()
+    await db.refresh(collection)
+    return collection
 
 @router.delete("/{collection_id}")
 async def delete_collection(collection_id: str, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):

@@ -18,6 +18,11 @@ export const createCollection = async (data: { name: string; description?: strin
   return response.data;
 };
 
+export const updateCollection = async (id: string, updates: { name?: string; description?: string }): Promise<Collection> => {
+  const response = await apiClient.put(`collections/${id}`, updates);
+  return response.data;
+};
+
 export const deleteCollection = async (id: string): Promise<void> => {
   await apiClient.delete(`collections/${id}`);
 };
