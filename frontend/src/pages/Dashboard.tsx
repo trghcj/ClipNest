@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { logoutUser } from '../services/firebase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBookmarks, createBookmark, extractMetadata } from '../services/bookmarks';
-// Bookmark type imported in case it's needed later, but not used directly in this scope
-import { ExternalLink, Plus, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark } from '../services/bookmarks';
+import type { Bookmark } from '../services/bookmarks';
+import { ExternalLink, Plus, Link as LinkIcon, Loader2, Trash2, Edit2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -13,6 +13,11 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
+
+  const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editUrl, setEditUrl] = useState('');
 
   const { data: bookmarks = [], isLoading } = useQuery({
     queryKey: ['bookmarks'],
@@ -26,6 +31,21 @@ const Dashboard = () => {
       setIsModalOpen(false);
       setNewUrl('');
       setIsExtracting(false);
+    },
+  });
+
+  const deleteBookmarkMutation = useMutation({
+    mutationFn: deleteBookmark,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    },
+  });
+
+  const updateBookmarkMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: Partial<Bookmark> }) => updateBookmark(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+      setEditingBookmark(null);
     },
   });
 
@@ -50,6 +70,34 @@ const Dashboard = () => {
       console.error("Failed to add bookmark", error);
       setIsExtracting(false);
     }
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this bookmark?")) {
+      deleteBookmarkMutation.mutate(id);
+    }
+  };
+
+  const openEditModal = (e: React.MouseEvent, bookmark: Bookmark) => {
+    e.stopPropagation();
+    setEditingBookmark(bookmark);
+    setEditTitle(bookmark.title || '');
+    setEditDescription(bookmark.description || '');
+    setEditUrl(bookmark.url);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBookmark) return;
+    updateBookmarkMutation.mutate({
+      id: editingBookmark.id,
+      updates: {
+        title: editTitle,
+        description: editDescription,
+        url: editUrl,
+      }
+    });
   };
 
   return (
@@ -164,14 +212,32 @@ const Dashboard = () => {
                   <span className="text-xs text-muted-foreground">
                     {new Date(bookmark.created_at).toLocaleDateString()}
                   </span>
-                  <a 
-                    href={bookmark.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => openEditModal(e, bookmark)}
+                      className="p-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => handleDelete(e, bookmark.id)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <a 
+                      href={bookmark.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                      title="Open Link"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -223,6 +289,67 @@ const Dashboard = () => {
                     </>
                   ) : (
                     'Save Bookmark'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Bookmark Modal */}
+      {editingBookmark && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md rounded-xl shadow-lg border border-border overflow-hidden">
+            <div className="p-6 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">Edit Bookmark</h3>
+            </div>
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">URL</label>
+                <input
+                  type="url"
+                  required
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div className="mt-8 flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingBookmark(null)}
+                  className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateBookmarkMutation.isPending}
+                  className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors rounded-md text-sm font-medium flex items-center gap-2 shadow-sm"
+                >
+                  {updateBookmarkMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Save Changes'
                   )}
                 </button>
               </div>
