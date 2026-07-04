@@ -29,7 +29,7 @@ async def extract_metadata(url: str) -> dict:
                     return {
                         "title": data.get("title", ""),
                         "description": f"Video by {data.get('author_name', '')}",
-                        "thumbnail_url": data.get("thumbnail_url", ""),
+                        "image_url": data.get("thumbnail_url", ""),
                         "favicon_url": "https://www.youtube.com/favicon.ico"
                     }
                 except Exception as e:
