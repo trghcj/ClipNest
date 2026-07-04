@@ -57,7 +57,7 @@ const ProtectedLayout = () => {
           className="text-xl font-bold text-primary mb-8 flex items-center gap-2 cursor-pointer"
           onClick={() => navigate('/')}
         >
-          <img src="/Clipnest_Logo_transparent.png" alt="ClipNest Logo" className="w-10 h-10 object-contain scale-125 -ml-1" />
+          <img src="/Clipnest_Logo.png" alt="ClipNest Logo" className="w-10 h-10 object-contain scale-125 -ml-1" />
           ClipNest
         </h1>
         
