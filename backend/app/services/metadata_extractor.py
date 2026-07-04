@@ -11,10 +11,31 @@ async def extract_metadata(url: str) -> dict:
         # Reconstruct URL to prevent SSRF tricks
         safe_url = parsed_url.geturl()
         
+        domain = parsed_url.netloc.lower()
+        is_youtube = domain == "youtube.com" or domain.endswith(".youtube.com") or domain == "youtu.be"
+        
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
         }
+        
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers=headers) as client:
+            if is_youtube:
+                # Use oEmbed API to reliably fetch YouTube metadata without bot blocking
+                oembed_url = f"https://www.youtube.com/oembed?url={safe_url}&format=json"
+                try:
+                    response = await client.get(oembed_url)
+                    response.raise_for_status()
+                    data = response.json()
+                    return {
+                        "title": data.get("title", ""),
+                        "description": f"Video by {data.get('author_name', '')}",
+                        "thumbnail_url": data.get("thumbnail_url", ""),
+                        "favicon_url": "https://www.youtube.com/favicon.ico"
+                    }
+                except Exception as e:
+                    print(f"Error with YouTube oEmbed: {e}")
+                    # Fallback to standard HTTP scrape if oEmbed fails
+            
             response = await client.get(safe_url)
             response.raise_for_status()
 
