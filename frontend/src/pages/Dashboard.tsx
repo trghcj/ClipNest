@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { logoutUser } from '../services/firebase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as Ta
 const Dashboard = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const currentCollectionId = searchParams.get('collectionId');
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';

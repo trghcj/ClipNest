@@ -8,7 +8,7 @@ import { AISearchModal } from '../components/AISearchModal';
 import { Plus, Folder, Home, Tag, Sparkles } from 'lucide-react';
 
 const ProtectedLayout = () => {
-  const { user } = useAuthStore();
+  const { user, loading } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isAISearchOpen, setIsAISearchOpen] = useState(false);
