@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { logoutUser } from '../services/firebase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark } from '../services/bookmarks';
+import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import type { Bookmark } from '../services/bookmarks';
 import { ExternalLink, Plus, Link as LinkIcon, Loader2, Trash2, Edit2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const currentCollectionId = searchParams.get('collectionId');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
 
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
@@ -19,17 +24,30 @@ const Dashboard = () => {
   const [editDescription, setEditDescription] = useState('');
   const [editUrl, setEditUrl] = useState('');
 
+  const { data: collections = [] } = useQuery({
+    queryKey: ['collections'],
+    queryFn: getCollections,
+  });
+
   const { data: bookmarks = [], isLoading } = useQuery({
-    queryKey: ['bookmarks'],
-    queryFn: getBookmarks,
+    queryKey: ['bookmarks', currentCollectionId],
+    queryFn: () => currentCollectionId ? getCollectionBookmarks(currentCollectionId) : getBookmarks(),
   });
 
   const addBookmarkMutation = useMutation({
     mutationFn: createBookmark,
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      if (selectedCollectionId) {
+        try {
+          await addBookmarkToCollection(selectedCollectionId, data.id);
+        } catch (error) {
+          console.error("Failed to add to collection", error);
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
       setIsModalOpen(false);
       setNewUrl('');
+      setSelectedCollectionId('');
       setIsExtracting(false);
     },
   });
@@ -111,7 +129,10 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setSelectedCollectionId(currentCollectionId || '');
+              setIsModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-md text-sm font-medium shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -144,7 +165,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Collections
           </div>
-          <div className="text-3xl font-bold text-foreground">0</div>
+          <div className="text-3xl font-bold text-foreground">{collections.length}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
@@ -168,7 +189,10 @@ const Dashboard = () => {
             Add your first bookmark to start organizing your digital knowledge base.
           </p>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setSelectedCollectionId(currentCollectionId || '');
+              setIsModalOpen(true);
+            }}
             className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md shadow hover:bg-primary/90 transition-colors font-medium text-sm"
           >
             Add Bookmark
@@ -268,6 +292,24 @@ const Dashboard = () => {
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
+                {collections.length > 0 && (
+                  <div>
+                    <label htmlFor="collection" className="block text-sm font-medium text-foreground mb-1">
+                      Collection (Optional)
+                    </label>
+                    <select
+                      id="collection"
+                      value={selectedCollectionId}
+                      onChange={(e) => setSelectedCollectionId(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                      <option value="">No Collection</option>
+                      {collections.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="mt-8 flex justify-end gap-3">
                 <button

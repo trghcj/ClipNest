@@ -1,9 +1,41 @@
-
-import { Navigate, Outlet } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Navigate, Outlet, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getCollections, createCollection } from '../services/collections';
+import { Plus, Folder, Home, Tag } from 'lucide-react';
 
 const ProtectedLayout = () => {
   const { user, loading } = useAuthStore();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const currentCollectionId = searchParams.get('collectionId');
+  const queryClient = useQueryClient();
+
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+
+  const { data: collections = [] } = useQuery({
+    queryKey: ['collections'],
+    queryFn: getCollections,
+    enabled: !!user,
+  });
+
+  const createCollectionMutation = useMutation({
+    mutationFn: createCollection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      setIsCreatingCollection(false);
+      setNewCollectionName('');
+    }
+  });
+
+  const handleCreateCollection = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newCollectionName.trim()) {
+      createCollectionMutation.mutate({ name: newCollectionName.trim() });
+    }
+  };
 
   if (loading) {
     return (
@@ -21,20 +53,69 @@ const ProtectedLayout = () => {
     <div className="flex h-screen w-full bg-background">
       {/* Sidebar will go here */}
       <div className="w-64 border-r bg-card flex flex-col p-4">
-        <h1 className="text-xl font-bold text-primary mb-8 flex items-center gap-2">
+        <h1 
+          className="text-xl font-bold text-primary mb-8 flex items-center gap-2 cursor-pointer"
+          onClick={() => navigate('/')}
+        >
           <img src="/Clipnest_Logo_transparent.png" alt="ClipNest Logo" className="w-10 h-10 object-contain scale-125 -ml-1" />
           ClipNest
         </h1>
-        <nav className="flex-1 space-y-2">
-          <a href="#" className="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-md transition-colors">
-            Dashboard
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors">
-            Collections
-          </a>
-          <a href="#" className="flex items-center gap-3 px-3 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors">
-            Tags
-          </a>
+        
+        <nav className="flex-1 space-y-4 overflow-y-auto pr-2">
+          <div className="space-y-1">
+            <button 
+              onClick={() => navigate('/')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${!currentCollectionId ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              <Home className="w-4 h-4" />
+              All Bookmarks
+            </button>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Collections</span>
+              <button 
+                onClick={() => setIsCreatingCollection(true)}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="New Collection"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {isCreatingCollection && (
+              <form onSubmit={handleCreateCollection} className="px-3 py-2">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Collection name..."
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  onBlur={() => setIsCreatingCollection(false)}
+                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
+              </form>
+            )}
+
+            {collections.map((collection: any) => (
+              <button 
+                key={collection.id}
+                onClick={() => navigate(`/?collectionId=${collection.id}`)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${currentCollectionId === collection.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+              >
+                <Folder className="w-4 h-4" />
+                <span className="truncate">{collection.name}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-1 pt-4">
+            <button className="w-full flex items-center gap-3 px-3 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors text-sm font-medium opacity-50 cursor-not-allowed">
+              <Tag className="w-4 h-4" />
+              Tags (Coming Soon)
+            </button>
+          </div>
         </nav>
       </div>
 
@@ -49,8 +130,8 @@ const ProtectedLayout = () => {
             />
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium">
-              {user.email?.[0].toUpperCase()}
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium uppercase">
+              {user.email?.[0]}
             </div>
           </div>
         </header>
