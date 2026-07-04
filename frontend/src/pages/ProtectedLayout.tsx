@@ -120,12 +120,22 @@ const ProtectedLayout = () => {
       </div>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Topbar will go here */}
+        {/* Topbar */}
         <header className="h-16 border-b bg-card flex items-center justify-between px-6">
           <div className="w-full max-w-xl">
             <input 
               type="text" 
               placeholder="Search bookmarks, tags, notes..." 
+              value={searchParams.get('q') || ''}
+              onChange={(e) => {
+                const newParams = new URLSearchParams(searchParams);
+                if (e.target.value) {
+                  newParams.set('q', e.target.value);
+                } else {
+                  newParams.delete('q');
+                }
+                navigate({ search: newParams.toString() });
+              }}
               className="w-full bg-muted border-none rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>

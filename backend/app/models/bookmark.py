@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -21,3 +22,5 @@ class Bookmark(Base):
     is_favorite = Column(Boolean, default=False)
     is_archived = Column(Boolean, default=False)
     content = Column(String) # Extracted text
+    
+    tags = relationship("Tag", secondary="clipnest_bookmark_tags", lazy="selectin")
