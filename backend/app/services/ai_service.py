@@ -1,7 +1,9 @@
 import os
 import json
 import httpx
+import re
 from bs4 import BeautifulSoup
+from youtube_transcript_api import YouTubeTranscriptApi
 from google import genai
 from pydantic import BaseModel
 from typing import List
@@ -45,6 +47,13 @@ async def extract_text_from_url(url: str) -> str:
         print(f"Error extracting text from {url}: {e}")
         return ""
 
+def extract_youtube_video_id(url: str) -> str:
+    """Extracts YouTube video ID from a given URL."""
+    # Matches standard youtube.com/watch?v=ID and youtu.be/ID
+    pattern = r"(?:v=|\/)([0-9A-Za-z_-]{11}).*"
+    match = re.search(pattern, url)
+    return match.group(1) if match else ""
+
 async def generate_bookmark_metadata(url: str, title: str, description: str) -> AIResult:
     """Uses Gemini to generate a summary and tags based on webpage content."""
     client = get_genai_client()
@@ -53,22 +62,51 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
     if not client:
         return AIResult(summary="", tags=[])
 
-    # Extract full text
-    content_text = await extract_text_from_url(url)
+    content_text = ""
+    is_youtube = False
+
+    # Check if URL is a YouTube video
+    if "youtube.com" in url or "youtu.be" in url:
+        video_id = extract_youtube_video_id(url)
+        if video_id:
+            try:
+                # Fetch transcript
+                transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+                transcript_text = " ".join([t['text'] for t in transcript_list])
+                content_text = transcript_text[:15000]  # Take first 15k chars to avoid limit
+                is_youtube = True
+            except Exception as e:
+                print(f"Error fetching YouTube transcript: {e}")
+                # Fallback to standard extraction
     
-    # If extraction failed, fallback to title and description
+    # If not a YouTube video or transcript failed, extract normal web text
+    if not content_text:
+        content_text = await extract_text_from_url(url)
+    
+    # If standard extraction also failed, fallback to title and description
     if not content_text:
         content_text = f"Title: {title}\nDescription: {description}"
 
-    prompt = f"""
-    You are an intelligent assistant for a bookmarking app. 
-    Read the following extracted webpage content and provide:
-    1. A concise, 2-sentence summary of the main points.
-    2. A list of 3 to 5 highly relevant, single-word tags (lowercase).
+    if is_youtube:
+        prompt = f"""
+        You are an intelligent assistant. 
+        Read the following raw transcript from a YouTube video and provide:
+        1. A concise, 2-sentence summary of the main points discussed in the video.
+        2. A list of 3 to 5 highly relevant, single-word tags (lowercase).
 
-    Webpage Content:
-    {content_text}
-    """
+        Video Transcript:
+        {content_text}
+        """
+    else:
+        prompt = f"""
+        You are an intelligent assistant for a bookmarking app. 
+        Read the following extracted webpage content and provide:
+        1. A concise, 2-sentence summary of the main points.
+        2. A list of 3 to 5 highly relevant, single-word tags (lowercase).
+
+        Webpage Content:
+        {content_text}
+        """
 
     try:
         # We use the recommended gemini-2.5-flash model

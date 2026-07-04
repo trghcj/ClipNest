@@ -301,8 +301,21 @@ const Dashboard = () => {
                 {bookmark.summary && (
                   <div className="bg-primary/5 border border-primary/20 rounded-md p-2.5 mb-3">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <Sparkles className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">AI Summary</span>
+                      {bookmark.url.includes('youtube.com') || bookmark.url.includes('youtu.be') ? (
+                        <>
+                          <div className="w-3.5 h-3.5 flex items-center justify-center bg-red-500 rounded-sm text-white">
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 ml-0.5">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                          <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">YouTube Summary</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">AI Summary</span>
+                        </>
+                      )}
                     </div>
                     <p className="text-xs text-foreground/80 leading-relaxed">
                       {bookmark.summary}
