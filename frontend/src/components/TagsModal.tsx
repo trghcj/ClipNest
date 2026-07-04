@@ -1,8 +1,7 @@
-import React from 'react';
 import { X, Tag as TagIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import apiClient from '../services/api';
 
 interface TagsModalProps {
   isOpen: boolean;
@@ -15,7 +14,7 @@ export function TagsModal({ isOpen, onClose }: TagsModalProps) {
   const { data: bookmarks = [] } = useQuery({
     queryKey: ['bookmarks'],
     queryFn: async () => {
-      const response = await api.get('/bookmarks');
+      const response = await apiClient.get('/bookmarks');
       return response.data;
     }
   });
