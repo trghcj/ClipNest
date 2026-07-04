@@ -5,14 +5,16 @@ import { logoutUser } from '../services/firebase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark } from '../services/bookmarks';
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
+import { createTag, addTagToBookmark } from '../services/tags';
 import type { Bookmark } from '../services/bookmarks';
-import { ExternalLink, Plus, Link as LinkIcon, Loader2, Trash2, Edit2 } from 'lucide-react';
+import { ExternalLink, Plus, Link as LinkIcon, Loader2, Trash2, Edit2, Tag as TagIcon } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const currentCollectionId = searchParams.get('collectionId');
+  const searchQuery = searchParams.get('q')?.toLowerCase() || '';
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUrl, setNewUrl] = useState('');
@@ -23,6 +25,7 @@ const Dashboard = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editUrl, setEditUrl] = useState('');
+  const [editTags, setEditTags] = useState('');
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -32,6 +35,12 @@ const Dashboard = () => {
   const { data: bookmarks = [], isLoading } = useQuery({
     queryKey: ['bookmarks', currentCollectionId],
     queryFn: () => currentCollectionId ? getCollectionBookmarks(currentCollectionId) : getBookmarks(),
+  });
+
+  const filteredBookmarks = bookmarks.filter((bookmark) => {
+    if (!searchQuery) return true;
+    const searchString = `${bookmark.title || ''} ${bookmark.description || ''} ${bookmark.url} ${bookmark.tags?.map((t: any) => t.name).join(' ') || ''}`.toLowerCase();
+    return searchString.includes(searchQuery);
   });
 
   const addBookmarkMutation = useMutation({
@@ -103,11 +112,14 @@ const Dashboard = () => {
     setEditTitle(bookmark.title || '');
     setEditDescription(bookmark.description || '');
     setEditUrl(bookmark.url);
+    setEditTags(bookmark.tags?.map((t: any) => t.name).join(', ') || '');
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingBookmark) return;
+    
+    // First update the bookmark details
     updateBookmarkMutation.mutate({
       id: editingBookmark.id,
       updates: {
@@ -116,6 +128,20 @@ const Dashboard = () => {
         url: editUrl,
       }
     });
+
+    // Then handle tags if they changed
+    const tagNames = editTags.split(',').map(t => t.trim()).filter(t => t);
+    if (tagNames.length > 0) {
+      for (const tagName of tagNames) {
+        try {
+          const tag = await createTag({ name: tagName });
+          await addTagToBookmark(tag.id, editingBookmark.id);
+        } catch (error) {
+          console.error("Failed to add tag", error);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    }
   };
 
   return (
@@ -153,7 +179,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Total Bookmarks
           </div>
-          <div className="text-3xl font-bold text-foreground">{bookmarks.length}</div>
+          <div className="text-3xl font-bold text-foreground">{filteredBookmarks.length}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
@@ -179,7 +205,7 @@ const Dashboard = () => {
         <div className="flex justify-center items-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : bookmarks.length === 0 ? (
+      ) : filteredBookmarks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-12 text-center flex flex-col items-center justify-center bg-muted/30">
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
             <LinkIcon className="w-6 h-6 text-primary" />
@@ -200,7 +226,7 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {bookmarks.map((bookmark) => (
+          {filteredBookmarks.map((bookmark) => (
             <div 
               key={bookmark.id} 
               onClick={() => window.open(bookmark.url, '_blank')}
@@ -227,12 +253,23 @@ const Dashboard = () => {
                 </div>
                 
                 {bookmark.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-4">
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                     {bookmark.description}
                   </p>
                 )}
                 
-                <div className="mt-auto flex items-center justify-between pt-4 border-t border-border/50">
+                {bookmark.tags && bookmark.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-4 mt-auto">
+                    {bookmark.tags.map((tag: any) => (
+                      <span key={tag.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        <TagIcon className="w-3 h-3" />
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                <div className={`mt-auto flex items-center justify-between pt-4 border-t border-border/50 ${(!bookmark.tags || bookmark.tags.length === 0) && !bookmark.description ? 'mt-auto' : ''}`}>
                   <span className="text-xs text-muted-foreground">
                     {new Date(bookmark.created_at).toLocaleDateString()}
                   </span>
@@ -372,6 +409,16 @@ const Dashboard = () => {
                   required
                   value={editUrl}
                   onChange={(e) => setEditUrl(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Tags (comma separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. react, ui, tutorial"
+                  value={editTags}
+                  onChange={(e) => setEditTags(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
