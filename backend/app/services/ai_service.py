@@ -68,8 +68,9 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
 
     # Check if URL is a YouTube video
     parsed_url = urlparse(url)
-    domain = parsed_url.netloc.lower()
-    if domain.endswith("youtube.com") or domain == "youtu.be":
+    host = (parsed_url.hostname or "").lower()
+    is_youtube_host = host == "youtube.com" or host.endswith(".youtube.com") or host == "youtu.be"
+    if is_youtube_host:
         video_id = extract_youtube_video_id(url)
         if video_id:
             try:
