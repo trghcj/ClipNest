@@ -3,8 +3,8 @@ import { useAuthStore } from '../store/authStore';
 import { logoutUser } from '../services/firebase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBookmarks, createBookmark, extractMetadata } from '../services/bookmarks';
-import type { Bookmark } from '../services/bookmarks';
-import { ExternalLink, Plus, Search, Trash2, Link as LinkIcon, Loader2 } from 'lucide-react';
+// Bookmark type imported in case it's needed later, but not used directly in this scope
+import { ExternalLink, Plus, Link as LinkIcon, Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();

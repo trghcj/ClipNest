@@ -1,7 +1,7 @@
 import apiClient from './api';
 
 export interface Bookmark {
-  id: int;
+  id: string;
   user_id: string;
   url: string;
   title: string | null;
@@ -31,7 +31,7 @@ export const extractMetadata = async (url: string) => {
   return response.data;
 };
 
-export const deleteBookmark = async (id: number) => {
+export const deleteBookmark = async (id: string) => {
   const response = await apiClient.delete(`bookmarks/${id}`);
   return response.data;
 };
