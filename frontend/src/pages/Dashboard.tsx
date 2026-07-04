@@ -301,7 +301,7 @@ const Dashboard = () => {
                 {bookmark.summary && (
                   <div className="bg-primary/5 border border-primary/20 rounded-md p-2.5 mb-3">
                     <div className="flex items-center gap-1.5 mb-1">
-                      {bookmark.url.includes('youtube.com') || bookmark.url.includes('youtu.be') ? (
+                      {/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/.test(bookmark.url) ? (
                         <>
                           <div className="w-3.5 h-3.5 flex items-center justify-center bg-red-500 rounded-sm text-white">
                             <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 ml-0.5">
