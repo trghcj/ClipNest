@@ -7,7 +7,7 @@ import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBo
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import { createTag, addTagToBookmark } from '../services/tags';
 import type { Bookmark } from '../services/bookmarks';
-import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles } from 'lucide-react';
+import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles, Archive, ArchiveRestore } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -336,10 +336,23 @@ const Dashboard = () => {
                 )}
                 
                 <div className={`mt-auto flex items-center justify-between pt-4 border-t border-border/50 ${(!bookmark.tags || bookmark.tags.length === 0) && !bookmark.description ? 'mt-auto' : ''}`}>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
                     {new Date(bookmark.created_at).toLocaleDateString()}
                   </span>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateBookmarkMutation.mutate({
+                          id: bookmark.id,
+                          updates: { is_archived: !bookmark.is_archived }
+                        });
+                      }}
+                      className={`p-1.5 rounded-md transition-colors ${bookmark.is_archived ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
+                      title={bookmark.is_archived ? "Unarchive" : "Archive"}
+                    >
+                      {bookmark.is_archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                    </button>
                     <button 
                       onClick={(e) => openEditModal(e, bookmark)}
                       className="p-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
@@ -359,7 +372,7 @@ const Dashboard = () => {
                       target="_blank" 
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors ml-1"
                       title="Open Link"
                     >
                       <ExternalLink className="w-4 h-4" />
