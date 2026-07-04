@@ -53,3 +53,25 @@ async def delete_bookmark(bookmark_id: str, db: Session = Depends(get_db), curre
     await db.delete(bookmark)
     await db.commit()
     return {"ok": True}
+
+@router.put("/{bookmark_id}", response_model=BookmarkResponse)
+async def update_bookmark(bookmark_id: str, bookmark_update: BookmarkUpdate, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
+    result = await db.execute(stmt)
+    bookmark = result.scalar_one_or_none()
+    
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+        
+    update_data = bookmark_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        if hasattr(bookmark, key):
+            if key == 'url' and value is not None:
+                setattr(bookmark, key, str(value))
+            else:
+                setattr(bookmark, key, value)
+            
+    await db.commit()
+    await db.refresh(bookmark)
+    return bookmark
+

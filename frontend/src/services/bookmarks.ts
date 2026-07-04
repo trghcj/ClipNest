@@ -35,3 +35,8 @@ export const deleteBookmark = async (id: string) => {
   const response = await apiClient.delete(`bookmarks/${id}`);
   return response.data;
 };
+
+export const updateBookmark = async (id: string, updates: Partial<Bookmark>): Promise<Bookmark> => {
+  const response = await apiClient.put(`bookmarks/${id}`, updates);
+  return response.data;
+};
