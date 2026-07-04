@@ -3,6 +3,7 @@ import { Navigate, Outlet, useNavigate, useSearchParams } from 'react-router-dom
 import { useAuthStore } from '../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollections, createCollection } from '../services/collections';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { Plus, Folder, Home, Tag } from 'lucide-react';
 
 const ProtectedLayout = () => {
@@ -140,6 +141,7 @@ const ProtectedLayout = () => {
             />
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium uppercase">
               {user.email?.[0]}
             </div>
