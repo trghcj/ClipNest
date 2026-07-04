@@ -22,9 +22,7 @@ const ProtectedLayout = () => {
       {/* Sidebar will go here */}
       <div className="w-64 border-r bg-card flex flex-col p-4">
         <h1 className="text-xl font-bold text-primary mb-8 flex items-center gap-2">
-          <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
+          <img src="/Clipnest_Logo_transparent.png" alt="ClipNest Logo" className="w-8 h-8 object-contain" />
           ClipNest
         </h1>
         <nav className="flex-1 space-y-2">
