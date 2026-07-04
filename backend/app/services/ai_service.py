@@ -10,6 +10,9 @@ class AIResult(BaseModel):
     summary: str
     tags: List[str]
 
+class AISearchResult(BaseModel):
+    matching_ids: List[str]
+
 # Initialize GenAI Client
 def get_genai_client():
     api_key = os.getenv("GEMINI_API_KEY")
@@ -85,3 +88,40 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
     except Exception as e:
         print(f"Error generating AI metadata: {e}")
         return AIResult(summary="", tags=[])
+
+async def perform_semantic_search(query: str, bookmarks_data: str) -> List[str]:
+    """Uses Gemini to find bookmarks matching a natural language query."""
+    client = get_genai_client()
+    
+    if not client:
+        return []
+
+    prompt = f"""
+    You are an intelligent search assistant. 
+    The user is looking for bookmarks that match this query: "{query}"
+    
+    Below is a JSON list of the user's bookmarks (id, title, description, summary, tags).
+    Analyze the semantics of the query and find all bookmarks that are highly relevant.
+    Return ONLY a JSON object containing a list of the matching bookmark IDs under the key 'matching_ids'.
+    If none match, return an empty list.
+
+    Bookmarks:
+    {bookmarks_data}
+    """
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config={
+                'response_mime_type': 'application/json',
+                'response_schema': AISearchResult,
+                'temperature': 0.1
+            }
+        )
+        
+        result_dict = json.loads(response.text)
+        return result_dict.get('matching_ids', [])
+    except Exception as e:
+        print(f"Error in semantic search: {e}")
+        return []

@@ -41,11 +41,20 @@ const Dashboard = () => {
     queryFn: () => currentCollectionId ? getCollectionBookmarks(currentCollectionId) : getBookmarks(),
   });
 
-  const filteredBookmarks = bookmarks.filter((bookmark) => {
-    if (!searchQuery) return true;
-    const searchString = `${bookmark.title || ''} ${bookmark.description || ''} ${bookmark.url} ${bookmark.tags?.map((t: any) => t.name).join(' ') || ''}`.toLowerCase();
-    return searchString.includes(searchQuery);
+  const filteredBookmarks = bookmarks.filter((b) => {
+    const matchesQuery = !searchQuery || 
+      (b.title?.toLowerCase().includes(searchQuery) || false) || 
+      (b.description?.toLowerCase().includes(searchQuery) || false) ||
+      (b.summary?.toLowerCase().includes(searchQuery) || false) ||
+      (b.tags?.some((t: any) => t.name.toLowerCase().includes(searchQuery)) || false);
+      
+    const aiMatchesParam = searchParams.get('aiMatches');
+    const matchesAi = !aiMatchesParam || aiMatchesParam.split(',').includes(b.id);
+
+    return matchesQuery && matchesAi;
   });
+
+  const aiQuery = searchParams.get('aiQuery');
 
   const addBookmarkMutation = useMutation({
     mutationFn: createBookmark,
@@ -210,6 +219,26 @@ const Dashboard = () => {
           <div className="text-3xl font-bold text-foreground">0</div>
         </div>
       </div>
+
+      {aiQuery && (
+        <div className="bg-primary/10 border border-primary/20 text-primary px-4 py-3 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            <span className="font-medium">Showing AI Results for: <span className="font-bold text-foreground">"{aiQuery}"</span></span>
+          </div>
+          <button 
+            onClick={() => {
+              const newParams = new URLSearchParams(searchParams);
+              newParams.delete('aiQuery');
+              newParams.delete('aiMatches');
+              navigate({ search: newParams.toString() });
+            }}
+            className="text-xs font-semibold uppercase tracking-wider hover:text-foreground transition-colors"
+          >
+            Clear Search
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center items-center py-20">

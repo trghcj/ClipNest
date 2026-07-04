@@ -40,3 +40,9 @@ class URLMetadataResponse(BaseModel):
     description: str
     image_url: str
     favicon_url: str
+
+class AISearchRequest(BaseModel):
+    query: str
+
+class AISearchResponse(BaseModel):
+    matching_ids: List[str]

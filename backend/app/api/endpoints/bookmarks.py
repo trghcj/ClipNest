@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+import json
 from typing import List
 from ...core.database import get_db
 from ...models.bookmark import Bookmark
-from ...schemas.bookmark import BookmarkCreate, BookmarkUpdate, BookmarkResponse, URLMetadataRequest, URLMetadataResponse
+from ...schemas.bookmark import BookmarkCreate, BookmarkUpdate, BookmarkResponse, URLMetadataRequest, URLMetadataResponse, AISearchRequest, AISearchResponse
 from ...services.metadata_extractor import extract_metadata
 from ...services.background_tasks import process_bookmark_ai
+from ...services.ai_service import perform_semantic_search
 from ...core.auth import get_current_user
 
 router = APIRouter()
@@ -45,6 +47,29 @@ async def read_bookmarks(skip: int = 0, limit: int = 100, db: Session = Depends(
     stmt = select(Bookmark).where(Bookmark.user_id == current_user).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+@router.post("/ai-search", response_model=AISearchResponse)
+async def ai_search_bookmarks(request: AISearchRequest, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    # 1. Fetch all bookmarks for user
+    stmt = select(Bookmark).where(Bookmark.user_id == current_user)
+    result = await db.execute(stmt)
+    bookmarks = result.scalars().all()
+    
+    # 2. Format a compact payload for the LLM
+    bookmarks_payload = []
+    for b in bookmarks:
+        tags_str = ", ".join([t.name for t in b.tags]) if b.tags else ""
+        bookmarks_payload.append({
+            "id": b.id,
+            "title": b.title or "",
+            "description": b.description or "",
+            "summary": b.summary or "",
+            "tags": tags_str
+        })
+        
+    # 3. Call AI Service
+    matching_ids = await perform_semantic_search(request.query, json.dumps(bookmarks_payload))
+    return {"matching_ids": matching_ids}
 
 @router.delete("/{bookmark_id}")
 async def delete_bookmark(bookmark_id: str, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
