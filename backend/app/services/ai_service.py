@@ -71,8 +71,8 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
         if video_id:
             try:
                 # Fetch transcript
-                transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-                transcript_text = " ".join([t['text'] for t in transcript_list])
+                transcript_list = YouTubeTranscriptApi().fetch(video_id)
+                transcript_text = " ".join([t.text for t in transcript_list])
                 content_text = transcript_text[:15000]  # Take first 15k chars to avoid limit
                 is_youtube = True
             except Exception as e:
