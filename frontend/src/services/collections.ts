@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { Bookmark } from './bookmarks';
+import type { Bookmark } from './bookmarks';
 
 export interface Collection {
   id: string;
