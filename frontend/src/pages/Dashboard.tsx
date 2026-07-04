@@ -43,6 +43,9 @@ const Dashboard = () => {
   });
 
   const filteredBookmarks = bookmarks.filter((b) => {
+    const isArchiveView = searchParams.get('view') === 'archive';
+    const matchesArchive = isArchiveView ? b.is_archived : !b.is_archived;
+
     const matchesQuery = !searchQuery || 
       (b.title?.toLowerCase().includes(searchQuery) || false) || 
       (b.description?.toLowerCase().includes(searchQuery) || false) ||
@@ -52,7 +55,7 @@ const Dashboard = () => {
     const aiMatchesParam = searchParams.get('aiMatches');
     const matchesAi = !aiMatchesParam || aiMatchesParam.split(',').includes(b.id);
 
-    return matchesQuery && matchesAi;
+    return matchesArchive && matchesQuery && matchesAi;
   });
 
   const aiQuery = searchParams.get('aiQuery');
@@ -194,17 +197,20 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Stat Cards */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Total Bookmarks
           </div>
-          <div className="text-3xl font-bold text-foreground">{filteredBookmarks.length}</div>
+          <div className="text-3xl font-bold text-foreground">
+            {bookmarks.filter(b => !b.is_archived).length}
+          </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             Unread
           </div>
-          <div className="text-3xl font-bold text-foreground">{filteredBookmarks.filter(b => !b.is_archived).length}</div>
+          <div className="text-3xl font-bold text-foreground">{bookmarks.filter(b => !b.is_archived).length}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
@@ -217,7 +223,7 @@ const Dashboard = () => {
             AI Tags
           </div>
           <div className="text-3xl font-bold text-foreground">
-            {new Set(filteredBookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size}
+            {new Set(bookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size}
           </div>
         </div>
       </div>
