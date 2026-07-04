@@ -7,7 +7,7 @@ import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBo
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import { createTag, addTagToBookmark } from '../services/tags';
 import type { Bookmark } from '../services/bookmarks';
-import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, X, Tag as TagIcon, Sparkles } from 'lucide-react';
+import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
