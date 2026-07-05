@@ -114,7 +114,7 @@ const ProtectedLayout = () => {
         transition={{ type: "spring", bounce: 0, duration: 0.3 }}
         className="bg-secondary flex flex-col p-4 shadow-[1px_0_10px_rgba(0,0,0,0.02)] z-10 border-none overflow-hidden shrink-0 relative"
       >
-        <div className={`flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} mb-8 relative`}>
+        <div className={`flex ${isSidebarExpanded ? 'flex-row items-center justify-between' : 'flex-col items-center gap-6'} mb-8`}>
           <div 
             className={`flex items-center gap-2 cursor-pointer text-xl font-display font-bold text-foreground overflow-hidden whitespace-nowrap`}
             onClick={() => navigate('/')}
@@ -135,7 +135,7 @@ const ProtectedLayout = () => {
           </div>
           <button 
             onClick={() => setIsSidebarExpanded(!isSidebarExpanded)} 
-            className={`p-1.5 text-foreground-secondary hover:bg-[#DCE8D2] hover:text-primary rounded-lg transition-colors ${!isSidebarExpanded ? 'absolute top-12 left-1/2 -translate-x-1/2 mt-2 bg-[#DCE8D2]/50' : ''}`}
+            className={`p-1.5 text-foreground-secondary hover:bg-[#DCE8D2] hover:text-primary rounded-lg transition-colors ${!isSidebarExpanded ? 'bg-[#DCE8D2]/50' : ''}`}
             title={isSidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
           >
             {isSidebarExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
