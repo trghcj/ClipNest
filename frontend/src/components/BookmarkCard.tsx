@@ -186,7 +186,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button 
-              onClick={(e) => { e.stopPropagation(); onToggleArchive(bookmark.id, bookmark.is_archive); }}
+              onClick={(e) => { e.stopPropagation(); onToggleArchive(bookmark.id, bookmark.is_archived); }}
               className="p-1.5 text-foreground-secondary hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
               title={bookmark.is_archived ? "Unarchive" : "Archive"}
             >

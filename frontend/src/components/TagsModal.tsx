@@ -37,7 +37,7 @@ export function TagsModal({ isOpen, onClose }: TagsModalProps) {
         <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2 text-foreground font-semibold">
             <TagIcon className="w-5 h-5 text-primary" />
-            <h2>Your AI Tags</h2>
+            <h2>Your Tags</h2>
           </div>
           <button 
             onClick={onClose}
@@ -52,7 +52,7 @@ export function TagsModal({ isOpen, onClose }: TagsModalProps) {
             <div className="text-center text-muted-foreground py-8">
               <TagIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
               <p>No tags generated yet.</p>
-              <p className="text-sm mt-1">Save some bookmarks to see AI tags here!</p>
+              <p className="text-sm mt-1">Save some bookmarks to see tags here!</p>
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">

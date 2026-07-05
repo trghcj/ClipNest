@@ -287,7 +287,7 @@ const ProtectedLayout = () => {
                 } else {
                   newParams.set('view', 'archive');
                 }
-                navigate({ search: newParams.toString() });
+                navigate({ pathname: '/', search: newParams.toString() });
               }}
               title={searchParams.get('view') === 'archive' ? 'Back to All Bookmarks' : 'Archived'}
               className={`w-full flex items-center ${isSidebarExpanded ? 'gap-3 px-3' : 'justify-center px-0'} py-2 text-sm font-medium rounded-lg transition-colors ${searchParams.get('view') === 'archive' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
