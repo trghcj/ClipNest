@@ -26,7 +26,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         return;
       }
 
-      fetch("http://localhost:8000/api/v1/extension/annotations", {
+      fetch("https://clipnest-backend.onrender.com/api/v1/extension/annotations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

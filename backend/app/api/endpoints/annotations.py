@@ -20,7 +20,8 @@ async def create_annotation(
 ):
     # Check if bookmark exists and belongs to user
     stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
-    bookmark = db.execute(stmt).scalar_one_or_none()
+    result = await db.execute(stmt)
+    bookmark = result.scalar_one_or_none()
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
 
@@ -31,8 +32,8 @@ async def create_annotation(
         note_text=annotation.note_text
     )
     db.add(db_annotation)
-    db.commit()
-    db.refresh(db_annotation)
+    await db.commit()
+    await db.refresh(db_annotation)
     return db_annotation
 
 @router.get("/bookmarks/{bookmark_id}/annotations", response_model=List[AnnotationResponse])
@@ -42,7 +43,8 @@ async def get_annotations(
     current_user: str = Depends(get_current_user)
 ):
     stmt = select(Annotation).where(Annotation.bookmark_id == bookmark_id, Annotation.user_id == current_user)
-    annotations = db.execute(stmt).scalars().all()
+    result = await db.execute(stmt)
+    annotations = result.scalars().all()
     return annotations
 
 @router.delete("/annotations/{annotation_id}")
@@ -52,12 +54,13 @@ async def delete_annotation(
     current_user: str = Depends(get_current_user)
 ):
     stmt = select(Annotation).where(Annotation.id == annotation_id, Annotation.user_id == current_user)
-    annotation = db.execute(stmt).scalar_one_or_none()
+    result = await db.execute(stmt)
+    annotation = result.scalar_one_or_none()
     if not annotation:
         raise HTTPException(status_code=404, detail="Annotation not found")
         
-    db.delete(annotation)
-    db.commit()
+    await db.delete(annotation)
+    await db.commit()
     return {"status": "success"}
 
 @router.post("/extension/annotations", response_model=AnnotationResponse)
@@ -70,7 +73,8 @@ async def create_extension_annotation(
     # It tries to find a bookmark with the exact URL, and if it doesn't exist, it creates a silent bookmark.
     url_str = str(annotation.url)
     stmt = select(Bookmark).where(Bookmark.url == url_str, Bookmark.user_id == current_user)
-    bookmark = db.execute(stmt).scalar_one_or_none()
+    result = await db.execute(stmt)
+    bookmark = result.scalar_one_or_none()
 
     if not bookmark:
         # Create a silent bookmark
@@ -81,7 +85,7 @@ async def create_extension_annotation(
             status="unread"
         )
         db.add(bookmark)
-        db.flush() # Flush to get bookmark.id for the annotation
+        await db.flush() # Flush to get bookmark.id for the annotation
 
     db_annotation = Annotation(
         bookmark_id=bookmark.id,
@@ -90,6 +94,6 @@ async def create_extension_annotation(
         note_text=annotation.note_text
     )
     db.add(db_annotation)
-    db.commit()
-    db.refresh(db_annotation)
+    await db.commit()
+    await db.refresh(db_annotation)
     return db_annotation
