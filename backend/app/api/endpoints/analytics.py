@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, desc, text
+from sqlalchemy import select, func, desc, text, cast, Date
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
@@ -23,10 +23,12 @@ class AnalyticsData(BaseModel):
 async def get_analytics(db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
     # 1. Basic counts
     stmt_total = select(func.count(Bookmark.id)).where(Bookmark.user_id == current_user)
-    total = db.execute(stmt_total).scalar() or 0
+    result_total = await db.execute(stmt_total)
+    total = result_total.scalar() or 0
 
     stmt_unread = select(func.count(Bookmark.id)).where(Bookmark.user_id == current_user, Bookmark.is_archived == False)
-    unread = db.execute(stmt_unread).scalar() or 0
+    result_unread = await db.execute(stmt_unread)
+    unread = result_unread.scalar() or 0
     read = total - unread
 
     # 2. Bookmarks added per day for the last 30 days
@@ -34,18 +36,19 @@ async def get_analytics(db: Session = Depends(get_db), current_user: str = Depen
     
     # We will use SQLAlchemy to group by date
     stmt_history = select(
-        func.date(Bookmark.created_at).label("date"),
+        cast(Bookmark.created_at, Date).label("date"),
         func.count(Bookmark.id).label("count")
     ).where(
         Bookmark.user_id == current_user,
         Bookmark.created_at >= thirty_days_ago
     ).group_by(
-        func.date(Bookmark.created_at)
+        cast(Bookmark.created_at, Date)
     ).order_by(
-        func.date(Bookmark.created_at)
+        cast(Bookmark.created_at, Date)
     )
 
-    history_result = db.execute(stmt_history).all()
+    history_result_exec = await db.execute(stmt_history)
+    history_result = history_result_exec.all()
     
     # Fill in missing days
     history_dict = {row.date.strftime("%Y-%m-%d"): row.count for row in history_result}
@@ -74,7 +77,8 @@ async def get_analytics(db: Session = Depends(get_db), current_user: str = Depen
         desc("count")
     ).limit(5)
 
-    tags_result = db.execute(stmt_tags).all()
+    tags_result_exec = await db.execute(stmt_tags)
+    tags_result = tags_result_exec.all()
     top_tags = [{"name": row.name, "count": row.count} for row in tags_result]
 
     return AnalyticsData(

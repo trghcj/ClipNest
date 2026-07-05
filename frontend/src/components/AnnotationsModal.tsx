@@ -24,7 +24,7 @@ export const AnnotationsModal: React.FC<AnnotationsModalProps> = ({ isOpen, onCl
     queryKey: ['annotations', bookmark?.id],
     queryFn: async () => {
       if (!bookmark) return [];
-      const res = await apiClient.get(`annotations/bookmarks/${bookmark.id}/annotations`);
+      const res = await apiClient.get(`bookmarks/${bookmark.id}/annotations`);
       return res.data as Annotation[];
     },
     enabled: !!bookmark && isOpen
@@ -32,7 +32,7 @@ export const AnnotationsModal: React.FC<AnnotationsModalProps> = ({ isOpen, onCl
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(`annotations/annotations/${id}`);
+      await apiClient.delete(`annotations/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['annotations', bookmark?.id] });
