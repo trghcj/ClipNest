@@ -56,7 +56,7 @@ def extract_youtube_video_id(url: str) -> str:
     match = re.search(pattern, url)
     return match.group(1) if match else ""
 
-async def generate_bookmark_metadata(url: str, title: str, description: str, user_collections: List[str] = []) -> AIResult:
+async def generate_bookmark_metadata(url: str, title: str, description: str, user_collections: List[str] = [], content: str = None) -> AIResult:
     """Uses Gemini to generate a summary, tags, and auto-categorization."""
     client = get_genai_client()
     
@@ -86,7 +86,11 @@ async def generate_bookmark_metadata(url: str, title: str, description: str, use
     
     # If not a YouTube video or transcript failed, extract normal web text
     if not content_text:
-        content_text = await extract_text_from_url(url)
+        if content:
+            # We already have extracted content from the metadata extractor (PDFs or standard articles)
+            content_text = content[:15000] # Limit to 15k chars to avoid token limits
+        else:
+            content_text = await extract_text_from_url(url)
     
     # If standard extraction also failed, fallback to title and description
     if not content_text:

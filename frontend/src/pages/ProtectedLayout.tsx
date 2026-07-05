@@ -6,9 +6,16 @@ import { getCollections, createCollection, updateCollection, deleteCollection } 
 import { ThemeToggle } from '../components/ThemeToggle';
 import { AISearchModal } from '../components/AISearchModal';
 import { TagsModal } from '../components/TagsModal';
-import { Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarChart2 } from 'lucide-react';
+import { Plus, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarChart2, Search } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { auth, logoutUser } from '../services/firebase';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const COLLECTION_COLORS = ['#607D4E', '#D4A373', '#5B8A52', '#C85C5C', '#A3B18A'];
+const getCollectionColor = (name: string) => {
+  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return COLLECTION_COLORS[hash % COLLECTION_COLORS.length];
+};
 
 const ProtectedLayout = () => {
   const { user, loading } = useAuthStore();
@@ -28,6 +35,8 @@ const ProtectedLayout = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
+
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -76,9 +85,7 @@ const ProtectedLayout = () => {
         await updateProfile(auth.currentUser, { photoURL: avatarUrl.trim() });
         setIsEditingAvatar(false);
         setAvatarUrl('');
-        // Force a re-render by updating some local state if needed, but user object is reactive via onAuthStateChanged
-        // The authStore will update if we trigger a re-auth, but for now we can just rely on the component re-render
-        window.location.reload(); // Simple way to refresh the avatar globally
+        window.location.reload();
       } catch (error) {
         console.error("Failed to update profile", error);
       }
@@ -98,34 +105,36 @@ const ProtectedLayout = () => {
   }
 
   return (
-    <div className="flex h-screen w-full bg-background">
-      {/* Sidebar will go here */}
-      <div className="w-64 border-r bg-card flex flex-col p-4">
+    <div className="flex h-screen w-full bg-background font-sans">
+      {/* Sidebar */}
+      <div className="w-64 bg-secondary flex flex-col p-4 shadow-[1px_0_10px_rgba(0,0,0,0.02)] z-10 border-none">
         <h1 
-          className="text-xl font-bold text-primary mb-8 flex items-center gap-2 cursor-pointer"
+          className="text-xl font-display font-bold text-foreground mb-8 flex items-center gap-2 cursor-pointer"
           onClick={() => navigate('/')}
         >
           <img src="/Clipnest_Logo.png" alt="ClipNest Logo" className="w-10 h-10 object-contain scale-125 -ml-1" />
           ClipNest
         </h1>
         
-        <nav className="flex-1 space-y-4 overflow-y-auto pr-2">
+        <nav className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
           <div className="space-y-1">
-            <button 
+            <motion.button 
+              whileHover={{ x: 4 }}
+              transition={{ duration: 0.2 }}
               onClick={() => navigate('/')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${!currentCollectionId ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${!currentCollectionId ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
             >
-              <Home className="w-4 h-4" />
+              <Home className={`w-4 h-4 ${!currentCollectionId ? 'text-primary' : 'text-foreground-secondary'}`} />
               All Bookmarks
-            </button>
+            </motion.button>
           </div>
 
           <div className="space-y-1">
             <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Collections</span>
+              <span className="text-xs font-semibold text-foreground-secondary/70 uppercase tracking-wider">Collections</span>
               <button 
                 onClick={() => setIsCreatingCollection(true)}
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-foreground-secondary/70 hover:text-primary transition-colors"
                 title="New Collection"
               >
                 <Plus className="w-4 h-4" />
@@ -141,13 +150,18 @@ const ProtectedLayout = () => {
                   value={newCollectionName}
                   onChange={(e) => setNewCollectionName(e.target.value)}
                   onBlur={() => setIsCreatingCollection(false)}
-                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 shadow-sm"
                 />
               </form>
             )}
 
             {collections.map((collection: any) => (
-              <div key={collection.id} className={`group flex items-center justify-between px-3 py-1.5 rounded-md transition-colors ${currentCollectionId === collection.id ? 'bg-primary/10' : 'hover:bg-muted'}`}>
+              <motion.div 
+                whileHover={{ x: 4 }}
+                transition={{ duration: 0.2 }}
+                key={collection.id} 
+                className={`group flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${currentCollectionId === collection.id ? 'bg-[#DCE8D2]' : 'hover:bg-[#DCE8D2]/50'}`}
+              >
                 {editingCollectionId === collection.id ? (
                   <form 
                     className="flex-1 flex items-center gap-2"
@@ -160,7 +174,7 @@ const ProtectedLayout = () => {
                       }
                     }}
                   >
-                    <Folder className="w-4 h-4 text-primary" />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getCollectionColor(collection.name) }} />
                     <input 
                       autoFocus
                       type="text"
@@ -174,9 +188,9 @@ const ProtectedLayout = () => {
                   <>
                     <button 
                       onClick={() => navigate(`/?collectionId=${collection.id}`)}
-                      className={`flex-1 flex items-center gap-3 text-sm font-medium truncate ${currentCollectionId === collection.id ? 'text-primary' : 'text-muted-foreground'}`}
+                      className={`flex-1 flex items-center gap-3 text-sm font-medium truncate ${currentCollectionId === collection.id ? 'text-foreground' : 'text-foreground-secondary'}`}
                     >
-                      <Folder className="w-4 h-4 flex-shrink-0" />
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm" style={{ backgroundColor: getCollectionColor(collection.name) }} />
                       <span className="truncate">{collection.name}</span>
                     </button>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -185,7 +199,7 @@ const ProtectedLayout = () => {
                           setEditingCollectionId(collection.id);
                           setEditCollectionName(collection.name);
                         }}
-                        className="p-1 text-muted-foreground hover:text-blue-500 rounded-md transition-colors"
+                        className="p-1 text-foreground-secondary hover:text-primary rounded-md transition-colors"
                         title="Rename Collection"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -196,7 +210,7 @@ const ProtectedLayout = () => {
                             deleteCollectionMutation.mutate(collection.id);
                           }
                         }}
-                        className="p-1 text-muted-foreground hover:text-destructive rounded-md transition-colors"
+                        className="p-1 text-foreground-secondary hover:text-destructive rounded-md transition-colors"
                         title="Delete Collection"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -204,19 +218,23 @@ const ProtectedLayout = () => {
                     </div>
                   </>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
 
-          <div className="space-y-1 pt-4">
-            <button 
+          <div className="space-y-1 pt-2 border-t border-border/50">
+            <motion.button 
+              whileHover={{ x: 4 }}
+              transition={{ duration: 0.2 }}
               onClick={() => setIsTagsModalOpen(true)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-md transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-foreground-secondary hover:bg-[#DCE8D2]/50 rounded-lg transition-colors"
             >
               <Tag className="w-4 h-4" />
               Tags
-            </button>
-            <button 
+            </motion.button>
+            <motion.button 
+              whileHover={{ x: 4 }}
+              transition={{ duration: 0.2 }}
               onClick={() => {
                 const newParams = new URLSearchParams(searchParams);
                 if (searchParams.get('view') === 'archive') {
@@ -226,55 +244,69 @@ const ProtectedLayout = () => {
                 }
                 navigate({ search: newParams.toString() });
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${searchParams.get('view') === 'archive' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${searchParams.get('view') === 'archive' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
             >
-              <Archive className="w-4 h-4" />
+              <Archive className={`w-4 h-4 ${searchParams.get('view') === 'archive' ? 'text-primary' : 'text-foreground-secondary'}`} />
               {searchParams.get('view') === 'archive' ? 'Back to All Bookmarks' : 'Archived'}
-            </button>
-            <button 
+            </motion.button>
+            <motion.button 
+              whileHover={{ x: 4 }}
+              transition={{ duration: 0.2 }}
               onClick={() => navigate('/analytics')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${window.location.pathname === '/analytics' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${window.location.pathname === '/analytics' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
             >
-              <BarChart2 className="w-4 h-4" />
+              <BarChart2 className={`w-4 h-4 ${window.location.pathname === '/analytics' ? 'text-primary' : 'text-foreground-secondary'}`} />
               Analytics
-            </button>
+            </motion.button>
           </div>
         </nav>
       </div>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
         {/* Topbar */}
-        <header className="h-16 border-b bg-card flex items-center justify-between px-6">
-          <div className="w-full max-w-xl relative flex items-center">
-            <input 
-              type="text" 
-              placeholder="Search bookmarks, tags, notes..." 
-              value={searchParams.get('q') || ''}
-              onChange={(e) => {
-                const newParams = new URLSearchParams(searchParams);
-                if (e.target.value) {
-                  newParams.set('q', e.target.value);
-                } else {
-                  newParams.delete('q');
-                }
-                navigate({ search: newParams.toString() });
-              }}
-              className="w-full bg-muted border-none rounded-md pl-4 pr-32 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            <button
-              onClick={() => setIsAISearchOpen(true)}
-              className="absolute right-1 top-1 bottom-1 px-3 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors rounded text-xs font-semibold flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Ask AI
-            </button>
+        <header className="h-20 bg-background flex items-center justify-between px-8 z-10 sticky top-0">
+          <div className="w-full max-w-2xl relative flex items-center">
+            {/* Spotlight Search Redesign */}
+            <div className={`relative w-full flex items-center transition-all duration-300 ${isSearchFocused ? 'shadow-[0_8px_30px_rgb(0,0,0,0.06)]' : ''}`}>
+              <Search className="w-5 h-5 text-foreground-secondary absolute left-4" />
+              <input 
+                type="text" 
+                placeholder="Search bookmarks, tags, notes..." 
+                value={searchParams.get('q') || ''}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                onChange={(e) => {
+                  const newParams = new URLSearchParams(searchParams);
+                  if (e.target.value) {
+                    newParams.set('q', e.target.value);
+                  } else {
+                    newParams.delete('q');
+                  }
+                  navigate({ search: newParams.toString() });
+                }}
+                className={`w-full h-12 bg-card rounded-2xl pl-12 pr-32 py-2 text-base font-medium text-foreground transition-all duration-300 outline-none border ${isSearchFocused ? 'border-primary/40 bg-card' : 'border-border/60 hover:border-primary/20 hover:bg-card/80 shadow-sm'}`}
+              />
+              <div className="absolute right-3 flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded bg-muted border border-border text-foreground-secondary text-[10px] font-bold tracking-widest">
+                  ⌘ K
+                </div>
+                <button
+                  onClick={() => setIsAISearchOpen(true)}
+                  className="px-3 py-1.5 bg-primary text-white hover:bg-primary-hover transition-colors rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Ask AI
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4 relative">
+          
+          <div className="flex items-center gap-6 relative ml-4">
             <ThemeToggle />
             
             <button 
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="relative w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium uppercase overflow-hidden border-2 border-transparent hover:border-primary/50 transition-colors focus:outline-none"
+              className="relative w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium uppercase overflow-hidden border-2 border-transparent hover:border-primary/30 transition-colors focus:outline-none shadow-sm"
             >
               {user.photoURL ? (
                 <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
@@ -284,74 +316,82 @@ const ProtectedLayout = () => {
             </button>
             
             {/* Profile Dropdown */}
-            {isProfileOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => { setIsProfileOpen(false); setIsEditingAvatar(false); }} />
-                <div className="absolute top-12 right-0 w-64 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 border-b border-border/50">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg overflow-hidden flex-shrink-0">
-                        {user.photoURL ? (
-                          <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
-                        ) : (
-                          user.email?.[0]
-                        )}
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-semibold text-foreground truncate">{user.displayName || 'User'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            <AnimatePresence>
+              {isProfileOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => { setIsProfileOpen(false); setIsEditingAvatar(false); }} />
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-14 right-0 w-64 bg-card border border-border rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] z-50 overflow-hidden"
+                  >
+                    <div className="p-4 border-b border-border/50">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg overflow-hidden flex-shrink-0">
+                          {user.photoURL ? (
+                            <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                          ) : (
+                            user.email?.[0]
+                          )}
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-sm font-semibold text-foreground truncate">{user.displayName || 'User'}</p>
+                          <p className="text-xs text-foreground-secondary truncate">{user.email}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="p-2">
-                    {isEditingAvatar ? (
-                      <form onSubmit={handleUpdateProfilePic} className="p-2 space-y-3">
-                        <div>
-                          <label className="text-xs font-medium text-foreground mb-1.5 block">Image URL</label>
-                          <input 
-                            autoFocus
-                            type="url" 
-                            placeholder="https://..." 
-                            required
-                            value={avatarUrl}
-                            onChange={(e) => setAvatarUrl(e.target.value)}
-                            className="w-full text-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => setIsEditingAvatar(false)} className="flex-1 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded-md transition-colors">Cancel</button>
-                          <button type="submit" className="flex-1 py-1.5 text-xs bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium">Save</button>
-                        </div>
-                      </form>
-                    ) : (
+                    
+                    <div className="p-2">
+                      {isEditingAvatar ? (
+                        <form onSubmit={handleUpdateProfilePic} className="p-2 space-y-3">
+                          <div>
+                            <label className="text-xs font-medium text-foreground mb-1.5 block">Image URL</label>
+                            <input 
+                              autoFocus
+                              type="url" 
+                              placeholder="https://..." 
+                              required
+                              value={avatarUrl}
+                              onChange={(e) => setAvatarUrl(e.target.value)}
+                              className="w-full text-xs rounded-md border border-input bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setIsEditingAvatar(false)} className="flex-1 py-1.5 text-xs text-foreground-secondary hover:bg-muted rounded-md transition-colors">Cancel</button>
+                            <button type="submit" className="flex-1 py-1.5 text-xs bg-primary text-white rounded-md hover:bg-primary-hover transition-colors font-medium">Save</button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button 
+                          onClick={() => { setIsEditingAvatar(true); setAvatarUrl(user.photoURL || ''); }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary rounded-md transition-colors"
+                        >
+                          <Image className="w-4 h-4 text-foreground-secondary" />
+                          Change Profile Picture
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="p-2 border-t border-border/50 bg-secondary/30">
                       <button 
-                        onClick={() => { setIsEditingAvatar(true); setAvatarUrl(user.photoURL || ''); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted rounded-md transition-colors"
+                        onClick={() => logoutUser()}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors font-medium"
                       >
-                        <Image className="w-4 h-4 text-muted-foreground" />
-                        Change Profile Picture
+                        <LogOut className="w-4 h-4" />
+                        Sign out
                       </button>
-                    )}
-                  </div>
-                  
-                  <div className="p-2 border-t border-border/50 bg-muted/20">
-                    <button 
-                      onClick={() => logoutUser()}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors font-medium"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto pt-6 px-12 pb-12">
           <Outlet />
         </main>
       </div>
