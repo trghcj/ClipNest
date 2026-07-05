@@ -7,12 +7,13 @@
 ---
 
 ## 🌟 Overview
-ClipNest is not just another bookmarking app. It is a smart digital library that automatically categorizes, summarizes, and understands the content you save. Built with a modern tech stack (FastAPI + React) and seamlessly integrated with a custom Chrome Extension, ClipNest ensures you never lose track of a valuable article or video again.
+ClipNest is not just another bookmarking app. It is a smart digital library that automatically categorizes, summarizes, and understands the content you save. Built with a modern tech stack (FastAPI + React) and seamlessly integrated with a custom Chrome Extension, ClipNest ensures you never lose track of a valuable article, video, or document again.
 
 ## ✨ AI Superpowers (Powered by Google Gemini 2.5 Flash)
 - **🤖 AI Auto-Tagging**: Forget manual organization. When you save a link, the background AI automatically reads the article and assigns highly relevant tags.
 - **📝 Smart Summarization**: Every article is automatically read and summarized into two concise sentences, allowing you to instantly recall the content without re-reading it.
 - **🎥 YouTube Transcript Summaries**: Save a YouTube video (tutorial, podcast, etc.) and ClipNest natively downloads the closed captions, feeding them to Gemini to extract a perfect summary of the video's core message.
+- **📄 Intelligent PDF Parsing**: Save direct PDF links. ClipNest will securely download and parse the document (with smart 3MB / 10-page guardrails to ensure efficiency), extracting the raw text for AI summarization and tagging.
 - **🔍 Semantic Search ("Ask AI")**: Instead of keyword matching, click "Ask AI" to search your library using natural conversational language. The AI scans your entire bookmark database and returns exact matches along with an intelligent answer based on your saved knowledge!
 
 ## 🚀 Core Features
@@ -24,11 +25,39 @@ ClipNest is not just another bookmarking app. It is a smart digital library that
 
 ---
 
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    A[Frontend React Client] -->|Submit URL| B(FastAPI Backend)
+    B --> C{Metadata Router}
+    C -->|Standard Web Page| D[BeautifulSoup Scraper]
+    C -->|YouTube Video| E[Transcript Extractor]
+    C -->|PDF Document| F[PyPDF Parser]
+    D --> G[Unified Content Pipeline]
+    E --> G
+    F --> G
+    G --> H[Google Gemini AI Service]
+    H -->|Summary & Tags| I[(PostgreSQL Database)]
+    I -->|Returns Data| A
+```
+
+---
+
+## 🎨 UI/UX Highlights
+ClipNest focuses on a premium, distraction-free reading experience:
+- **Sage Library Aesthetics**: A cohesive, calming color palette utilizing warm backgrounds (`#F8F6F1`) and elegant typography (`Inter` & `Plus Jakarta Sans`).
+- **Fluid Microinteractions**: Powered by `framer-motion` for buttery-smooth hover states, dynamic active selections, and seamless layout transitions.
+- **Spotlight Search**: A centralized, macOS-style omnibar for navigating your digital brain.
+- **Knowledge-First Layouts**: Notion-style horizontal scrolling sections for "Continue Reading" and "Recently Saved", alongside dynamic trend-tracking statistics computed instantly on the client.
+
+---
+
 ## 🛠️ Tech Stack
 
 ### Frontend
 - **Framework**: React 18 with Vite
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS, Framer Motion
 - **State Management**: Zustand (Global state), React Query (Server state)
 - **Routing**: React Router DOM
 - **Authentication**: Firebase Auth
@@ -37,7 +66,7 @@ ClipNest is not just another bookmarking app. It is a smart digital library that
 - **Framework**: FastAPI (Python)
 - **Database**: PostgreSQL with SQLAlchemy ORM
 - **AI Integration**: Google GenAI SDK (`gemini-2.5-flash`)
-- **Web Scraping**: BeautifulSoup4, `youtube-transcript-api`
+- **Document Processing**: BeautifulSoup4, `youtube-transcript-api`, `pypdf`
 - **Authentication**: Firebase Admin SDK
 
 ### Extension
@@ -102,14 +131,6 @@ npm run dev
 2. Enable **Developer mode** in the top right corner.
 3. Click **Load unpacked** and select the `extension` folder in this repository.
 4. Pin the ClipNest extension to your browser toolbar!
-
----
-
-## 🎨 UI/UX Highlights
-ClipNest focuses on a premium user experience featuring:
-- **Glassmorphism & Micro-animations**: Smooth hover effects and transitions.
-- **Bespoke Badges**: Special dynamic badges (e.g., custom red YouTube badges) for different content types.
-- **Accessible Design**: Fully keyboard accessible forms and semantic HTML.
 
 ---
 
