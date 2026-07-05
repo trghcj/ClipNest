@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { logoutUser } from '../services/firebase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark } from '../services/bookmarks';
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
-import { createTag, addTagToBookmark } from '../services/tags';
 import type { Bookmark } from '../services/bookmarks';
-import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles, Archive, ArchiveRestore, BookOpen, Highlighter } from 'lucide-react';
+import { Bookmark as BookmarkIcon, Plus, Loader2, Sparkles, BookOpen, Clock, Folder, Tag as TagIcon, TrendingUp, Star, Archive } from 'lucide-react';
 import { ReaderModal } from '../components/ReaderModal';
-import { AnnotationsModal } from '../components/AnnotationsModal';
+import { BookmarkCard } from '../components/BookmarkCard';
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -19,26 +18,13 @@ const Dashboard = () => {
   const currentCollectionId = searchParams.get('collectionId');
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';
   
-  const [isModalOpen, setIsModalOpen] = useState(() => {
-    return !!searchParams.get('saveUrl');
-  });
-  const [newUrl, setNewUrl] = useState(() => {
-    return searchParams.get('saveUrl') || '';
-  });
+  const [isModalOpen, setIsModalOpen] = useState(() => !!searchParams.get('saveUrl'));
+  const [newUrl, setNewUrl] = useState(() => searchParams.get('saveUrl') || '');
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
 
-  const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editUrl, setEditUrl] = useState('');
-  const [editTags, setEditTags] = useState('');
-  
   const [readerBookmark, setReaderBookmark] = useState<Bookmark | null>(null);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
-  
-  const [annotationsBookmark, setAnnotationsBookmark] = useState<Bookmark | null>(null);
-  const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -103,7 +89,6 @@ const Dashboard = () => {
     mutationFn: ({ id, updates }: { id: string, updates: Partial<Bookmark> }) => updateBookmark(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-      setEditingBookmark(null);
     },
   });
 
@@ -113,10 +98,7 @@ const Dashboard = () => {
 
     setIsExtracting(true);
     try {
-      // 1. Extract metadata from the URL
       const metadata = await extractMetadata(newUrl);
-      
-      // 2. Save bookmark with metadata
       await addBookmarkMutation.mutateAsync({
         url: newUrl,
         title: metadata.title,
@@ -131,115 +113,139 @@ const Dashboard = () => {
     }
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this bookmark?")) {
-      deleteBookmarkMutation.mutate(id);
-    }
-  };
+  // Trend Data Calculations
+  const now = new Date();
+  const activeBookmarks = bookmarks.filter(b => !b.is_archived);
+  const thisWeekBookmarks = activeBookmarks.filter(b => (now.getTime() - new Date(b.created_at).getTime()) / (1000 * 3600 * 24) <= 7).length;
+  const unreadCount = activeBookmarks.filter(b => b.status === 'unread' || !b.status).length;
+  const uniqueTags = new Set(bookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size;
 
-  const openEditModal = (e: React.MouseEvent, bookmark: Bookmark) => {
-    e.stopPropagation();
-    setEditingBookmark(bookmark);
-    setEditTitle(bookmark.title || '');
-    setEditDescription(bookmark.description || '');
-    setEditUrl(bookmark.url);
-    setEditTags(bookmark.tags?.map((t: any) => t.name).join(', ') || '');
-  };
+  const isMainDashboard = !currentCollectionId && !searchQuery && !searchParams.get('view') && !aiQuery;
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingBookmark) return;
-    
-    // First update the bookmark details
-    updateBookmarkMutation.mutate({
-      id: editingBookmark.id,
-      updates: {
-        title: editTitle,
-        description: editDescription,
-        url: editUrl,
-      }
-    });
-
-    // Then handle tags if they changed
-    const tagNames = editTags.split(',').map(t => t.trim()).filter(t => t);
-    if (tagNames.length > 0) {
-      for (const tagName of tagNames) {
-        try {
-          const tag = await createTag({ name: tagName });
-          await addTagToBookmark(tag.id, editingBookmark.id);
-        } catch (error) {
-          console.error("Failed to add tag", error);
-        }
-      }
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-    }
+  // Render Horizontal Section
+  const renderSection = (title: string, icon: React.ReactNode, items: Bookmark[]) => {
+    if (items.length === 0) return null;
+    return (
+      <div className="mb-12">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            {icon}
+          </div>
+          <h3 className="text-xl font-display font-bold text-foreground">{title}</h3>
+        </div>
+        <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x">
+          {items.map((bookmark) => (
+            <div key={bookmark.id} className="min-w-[280px] sm:min-w-[320px] max-w-[320px] shrink-0 snap-start h-[340px]">
+              <BookmarkCard 
+                bookmark={bookmark}
+                onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
+                onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
+                onDelete={(id) => window.confirm("Delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
+                onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-8 relative min-h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between">
+    <div className="space-y-12 relative min-h-[calc(100vh-8rem)]">
+      {/* Header */}
+      <div className="flex items-end justify-between pb-4 border-b border-border/50">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">My Library</h2>
-          <p className="text-muted-foreground mt-1">
-            Welcome back, {user?.displayName || user?.email}
+          <h2 className="text-[42px] font-display font-bold tracking-tight text-foreground leading-tight">
+            My Library
+          </h2>
+          <p className="text-lg font-medium text-foreground-secondary mt-1">
+            Welcome back, {user?.displayName || user?.email?.split('@')[0]}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-2">
           <button 
             onClick={() => {
               setSelectedCollectionId(currentCollectionId || '');
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-md text-sm font-medium shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white hover:bg-primary-hover transition-colors rounded-lg text-sm font-semibold shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Add Bookmark
           </button>
-          <button 
-            onClick={logoutUser}
-            className="px-4 py-2 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded-md text-sm font-medium"
-          >
-            Sign Out
-          </button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Stat Cards */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
-            Total Bookmarks
+      {/* Statistics Cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="rounded-2xl border border-border bg-card p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center gap-3 text-sm font-semibold text-foreground-secondary mb-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <BookmarkIcon className="w-4 h-4" />
+            </div>
+            Bookmarks
           </div>
-          <div className="text-3xl font-bold text-foreground">
-            {bookmarks.filter(b => !b.is_archived).length}
+          <div className="text-3xl font-display font-bold text-foreground mb-2">
+            {activeBookmarks.length}
           </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-success">
+            <TrendingUp className="w-3.5 h-3.5" />
+            +{thisWeekBookmarks} this week
+          </div>
+        </motion.div>
+
+        <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="rounded-2xl border border-border bg-card p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center gap-3 text-sm font-semibold text-foreground-secondary mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600">
+              <BookOpen className="w-4 h-4" />
+            </div>
             Unread
           </div>
-          <div className="text-3xl font-bold text-foreground">{bookmarks.filter(b => !b.is_archived).length}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+          <div className="text-3xl font-display font-bold text-foreground mb-2">
+            {unreadCount}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground-secondary">
+            <Clock className="w-3.5 h-3.5" />
+            Requires attention
+          </div>
+        </motion.div>
+
+        <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="rounded-2xl border border-border bg-card p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center gap-3 text-sm font-semibold text-foreground-secondary mb-3">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-600">
+              <Folder className="w-4 h-4" />
+            </div>
             Collections
           </div>
-          <div className="text-3xl font-bold text-foreground">{collections.length}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+          <div className="text-3xl font-display font-bold text-foreground mb-2">
+            {collections.length}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground-secondary">
+            <Archive className="w-3.5 h-3.5" />
+            Highly organized
+          </div>
+        </motion.div>
+
+        <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="rounded-2xl border border-border bg-card p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center gap-3 text-sm font-semibold text-foreground-secondary mb-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600">
+              <TagIcon className="w-4 h-4" />
+            </div>
             AI Tags
           </div>
-          <div className="text-3xl font-bold text-foreground">
-            {new Set(bookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size}
+          <div className="text-3xl font-display font-bold text-foreground mb-2">
+            {uniqueTags}
           </div>
-        </div>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground-secondary">
+            <Sparkles className="w-3.5 h-3.5" />
+            Auto-generated
+          </div>
+        </motion.div>
       </div>
 
       {aiQuery && (
-        <div className="bg-primary/10 border border-primary/20 text-primary px-4 py-3 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="bg-primary/10 border border-primary/20 text-primary px-5 py-4 rounded-xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5" />
             <span className="font-medium">Showing AI Results for: <span className="font-bold text-foreground">"{aiQuery}"</span></span>
           </div>
@@ -250,7 +256,7 @@ const Dashboard = () => {
               newParams.delete('aiMatches');
               navigate({ search: newParams.toString() });
             }}
-            className="text-xs font-semibold uppercase tracking-wider hover:text-foreground transition-colors"
+            className="text-xs font-bold uppercase tracking-wider hover:text-foreground transition-colors px-3 py-1.5 rounded-md hover:bg-primary/10"
           >
             Clear Search
           </button>
@@ -261,13 +267,13 @@ const Dashboard = () => {
         <div className="flex justify-center items-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : filteredBookmarks.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-12 text-center flex flex-col items-center justify-center bg-muted/30">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <LinkIcon className="w-6 h-6 text-primary" />
+      ) : activeBookmarks.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/80 p-16 text-center flex flex-col items-center justify-center bg-card shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 shadow-sm">
+            <BookmarkIcon className="w-8 h-8 text-primary" />
           </div>
-          <h3 className="text-lg font-medium text-foreground">Your library is empty</h3>
-          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          <h3 className="text-xl font-display font-bold text-foreground">Your library is empty</h3>
+          <p className="text-base text-foreground-secondary mt-2 max-w-sm">
             Add your first bookmark to start organizing your digital knowledge base.
           </p>
           <button 
@@ -275,148 +281,28 @@ const Dashboard = () => {
               setSelectedCollectionId(currentCollectionId || '');
               setIsModalOpen(true);
             }}
-            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md shadow hover:bg-primary/90 transition-colors font-medium text-sm"
+            className="mt-8 px-6 py-3 bg-primary text-white rounded-lg shadow-sm hover:bg-primary-hover transition-colors font-semibold text-sm"
           >
             Add Bookmark
           </button>
         </div>
+      ) : isMainDashboard ? (
+        <div className="space-y-4">
+          {renderSection("Continue Reading", <BookOpen className="w-5 h-5" />, activeBookmarks.filter(b => b.status === 'reading' || b.status === 'unread').slice(0, 8))}
+          {renderSection("Recently Saved", <Clock className="w-5 h-5" />, [...activeBookmarks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 8))}
+          {renderSection("Favorites", <Star className="w-5 h-5" />, activeBookmarks.filter(b => b.is_favorite))}
+        </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredBookmarks.map((bookmark) => (
-            <div 
-              key={bookmark.id} 
-              onClick={() => window.open(bookmark.url, '_blank')}
-              className="group flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-1 duration-200"
-            >
-              {bookmark.thumbnail_url ? (
-                <div className="h-40 w-full overflow-hidden bg-muted">
-                  <img src={bookmark.thumbnail_url} alt={bookmark.title || 'Thumbnail'} className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="h-40 w-full bg-muted/50 flex items-center justify-center border-b border-border">
-                  <LinkIcon className="w-8 h-8 text-muted-foreground/30" />
-                </div>
-              )}
-              
-              <div className="p-4 flex flex-col flex-1">
-                <div className="flex items-start gap-2 mb-2">
-                  {bookmark.favicon_url && (
-                    <img src={bookmark.favicon_url} alt="icon" className="w-4 h-4 mt-1 rounded-sm" />
-                  )}
-                  <h4 className="font-semibold text-foreground line-clamp-2 leading-tight">
-                    {bookmark.title || bookmark.url}
-                  </h4>
-                </div>
-                
-                {bookmark.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-                    {bookmark.description}
-                  </p>
-                )}
-                
-                {bookmark.summary && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-md p-2.5 mb-3">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      {/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/.test(bookmark.url) ? (
-                        <>
-                          <div className="w-3.5 h-3.5 flex items-center justify-center bg-red-500 rounded-sm text-white">
-                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 ml-0.5">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </div>
-                          <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">YouTube Summary</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3.5 h-3.5 text-primary" />
-                          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">AI Summary</span>
-                        </>
-                      )}
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                      {bookmark.summary}
-                    </p>
-                  </div>
-                )}
-                
-                {bookmark.tags && bookmark.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-4 mt-auto">
-                    {bookmark.tags.map((tag: any) => (
-                      <span key={tag.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                        <TagIcon className="w-3 h-3" />
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                
-                <div className={`mt-auto flex flex-wrap items-center justify-between gap-y-2 pt-4 border-t border-border/50 ${(!bookmark.tags || bookmark.tags.length === 0) && !bookmark.description ? 'mt-auto' : ''}`}>
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">
-                    {new Date(bookmark.created_at).toLocaleDateString()}
-                  </span>
-                  <div className="flex flex-wrap items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setReaderBookmark(bookmark);
-                        setIsReaderOpen(true);
-                      }}
-                      className="p-1 text-muted-foreground hover:text-green-500 hover:bg-green-500/10 rounded-md transition-colors"
-                      title="Read Article"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAnnotationsBookmark(bookmark);
-                        setIsAnnotationsOpen(true);
-                      }}
-                      className="p-1 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10 rounded-md transition-colors"
-                      title="View Highlights"
-                    >
-                      <Highlighter className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateBookmarkMutation.mutate({
-                          id: bookmark.id,
-                          updates: { is_archived: !bookmark.is_archived }
-                        });
-                      }}
-                      className={`p-1 rounded-md transition-colors ${bookmark.is_archived ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
-                      title={bookmark.is_archived ? "Unarchive" : "Archive"}
-                    >
-                      {bookmark.is_archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                    </button>
-                    <button 
-                      onClick={(e) => openEditModal(e, bookmark)}
-                      className="p-1 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
-                      title="Edit"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={(e) => handleDelete(e, bookmark.id)}
-                      className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <a 
-                      href={bookmark.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors ml-0.5"
-                      title="Open Link"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              </div>
+            <div key={bookmark.id} className="h-[340px]">
+              <BookmarkCard 
+                bookmark={bookmark}
+                onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
+                onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
+                onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
+                onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
+              />
             </div>
           ))}
         </div>
@@ -424,15 +310,19 @@ const Dashboard = () => {
 
       {/* Add Bookmark Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-lg border border-border overflow-hidden">
-            <div className="p-6 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">Save to Library</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 backdrop-blur-sm p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-card w-full max-w-md rounded-2xl shadow-xl border border-border overflow-hidden"
+          >
+            <div className="p-6 border-b border-border/50 bg-secondary/30">
+              <h3 className="text-xl font-display font-bold text-foreground">Save to Library</h3>
             </div>
             <form onSubmit={handleAddBookmark} className="p-6">
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label htmlFor="url" className="block text-sm font-medium text-foreground mb-1">
+                  <label htmlFor="url" className="block text-sm font-semibold text-foreground mb-1.5">
                     URL Link
                   </label>
                   <input
@@ -442,19 +332,19 @@ const Dashboard = () => {
                     placeholder="https://example.com/article"
                     value={newUrl}
                     onChange={(e) => setNewUrl(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 shadow-sm transition-all"
                   />
                 </div>
                 {collections.length > 0 && (
                   <div>
-                    <label htmlFor="collection" className="block text-sm font-medium text-foreground mb-1">
+                    <label htmlFor="collection" className="block text-sm font-semibold text-foreground mb-1.5">
                       Collection (Optional)
                     </label>
                     <select
                       id="collection"
                       value={selectedCollectionId}
                       onChange={(e) => setSelectedCollectionId(e.target.value)}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 shadow-sm transition-all appearance-none"
                     >
                       <option value="">No Collection</option>
                       {collections.map((c: any) => (
@@ -468,14 +358,14 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
+                  className="px-5 py-2.5 text-sm font-semibold text-foreground-secondary hover:bg-secondary rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isExtracting || !newUrl}
-                  className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors rounded-md text-sm font-medium flex items-center gap-2 shadow-sm"
+                  className="px-5 py-2.5 bg-primary text-white hover:bg-primary-hover disabled:opacity-50 transition-colors rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
                 >
                   {isExtracting ? (
                     <>
@@ -488,78 +378,7 @@ const Dashboard = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Bookmark Modal */}
-      {editingBookmark && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-lg border border-border overflow-hidden">
-            <div className="p-6 border-b border-border">
-              <h3 className="text-lg font-semibold text-foreground">Edit Bookmark</h3>
-            </div>
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Title</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Description</label>
-                <textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">URL</label>
-                <input
-                  type="url"
-                  required
-                  value={editUrl}
-                  onChange={(e) => setEditUrl(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Tags (comma separated)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. react, ui, tutorial"
-                  value={editTags}
-                  onChange={(e) => setEditTags(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <div className="mt-8 flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingBookmark(null)}
-                  className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateBookmarkMutation.isPending}
-                  className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors rounded-md text-sm font-medium flex items-center gap-2 shadow-sm"
-                >
-                  {updateBookmarkMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    'Save Changes'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
+          </motion.div>
         </div>
       )}
       
@@ -567,12 +386,6 @@ const Dashboard = () => {
         isOpen={isReaderOpen}
         onClose={() => setIsReaderOpen(false)}
         bookmark={readerBookmark}
-      />
-      
-      <AnnotationsModal 
-        isOpen={isAnnotationsOpen}
-        onClose={() => setIsAnnotationsOpen(false)}
-        bookmark={annotationsBookmark}
       />
     </div>
   );
