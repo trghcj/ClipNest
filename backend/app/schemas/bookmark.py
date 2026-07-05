@@ -20,6 +20,7 @@ class BookmarkCreate(BookmarkBase):
 
 class BookmarkUpdate(BookmarkBase):
     url: Optional[HttpUrl] = None
+    tags: Optional[List[str]] = None
 
 class BookmarkResponse(BookmarkBase):
     id: str

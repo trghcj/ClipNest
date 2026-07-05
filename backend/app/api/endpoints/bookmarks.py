@@ -5,6 +5,7 @@ import json
 from typing import List
 from ...core.database import get_db
 from ...models.bookmark import Bookmark
+from ...models.tag import Tag
 from ...schemas.bookmark import BookmarkCreate, BookmarkUpdate, BookmarkResponse, URLMetadataRequest, URLMetadataResponse, AISearchRequest, AISearchResponse
 from ...services.metadata_extractor import extract_metadata
 from ...services.background_tasks import process_bookmark_ai
@@ -95,12 +96,28 @@ async def update_bookmark(bookmark_id: str, bookmark_update: BookmarkUpdate, db:
         raise HTTPException(status_code=404, detail="Bookmark not found")
         
     update_data = bookmark_update.dict(exclude_unset=True)
+    tags_list = update_data.pop('tags', None)
+    
     for key, value in update_data.items():
         if hasattr(bookmark, key):
             if key == 'url' and value is not None:
                 setattr(bookmark, key, str(value))
             else:
                 setattr(bookmark, key, value)
+                
+    if tags_list is not None:
+        # Clear existing tags
+        bookmark.tags.clear()
+        for tag_name in tags_list:
+            if tag_name.strip():
+                # Check if tag exists for this user
+                stmt_tag = select(Tag).where(Tag.name == tag_name.strip(), Tag.user_id == current_user)
+                result_tag = await db.execute(stmt_tag)
+                tag = result_tag.scalar_one_or_none()
+                if not tag:
+                    tag = Tag(name=tag_name.strip(), user_id=current_user, is_ai_generated=False)
+                    db.add(tag)
+                bookmark.tags.append(tag)
             
     await db.commit()
     await db.refresh(bookmark)

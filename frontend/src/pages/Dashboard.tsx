@@ -33,24 +33,30 @@ const Dashboard = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editUrl, setEditUrl] = useState('');
+  const [editTags, setEditTags] = useState('');
 
   const openEditModal = (bookmark: Bookmark) => {
     setEditingBookmark(bookmark);
     setEditTitle(bookmark.title || '');
     setEditDescription(bookmark.description || '');
     setEditUrl(bookmark.url || '');
+    setEditTags(bookmark.tags?.map((t: any) => t.name).join(', ') || '');
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingBookmark) return;
+    
+    const tagNames = editTags.split(',').map(t => t.trim()).filter(t => t);
+    
     await updateBookmarkMutation.mutateAsync({
       id: editingBookmark.id,
       updates: {
         title: editTitle,
         description: editDescription,
         url: editUrl,
-      }
+        tags: tagNames
+      } as any
     });
     setEditingBookmark(null);
   };
@@ -441,7 +447,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md p-6 bg-card rounded-2xl shadow-xl border border-border"
+            className="w-full max-w-lg p-6 bg-card rounded-2xl shadow-xl border border-border"
           >
             <h3 className="text-xl font-display font-bold text-foreground mb-4">Edit Bookmark</h3>
             <form onSubmit={handleEditSubmit} className="space-y-4">
@@ -459,7 +465,7 @@ const Dashboard = () => {
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary min-h-[80px]"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary min-h-[120px] custom-scrollbar"
                 />
               </div>
               <div>
@@ -468,6 +474,16 @@ const Dashboard = () => {
                   type="url"
                   value={editUrl}
                   onChange={(e) => setEditUrl(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1">Tags (comma separated)</label>
+                <input
+                  type="text"
+                  value={editTags}
+                  onChange={(e) => setEditTags(e.target.value)}
+                  placeholder="e.g. productivity, reading, tech"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary"
                 />
               </div>
