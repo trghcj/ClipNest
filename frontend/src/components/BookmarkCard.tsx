@@ -22,8 +22,20 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   // Calculate reading time based on summary word count if content doesn't exist.
   // Standard reading speed is ~200 words per minute.
   const getReadingTime = () => {
-    if (bookmark.url && (bookmark.url.includes('youtube.com') || bookmark.url.includes('youtu.be'))) {
-      return "Video";
+    if (bookmark.url) {
+      try {
+        const hostname = new URL(bookmark.url).hostname.toLowerCase();
+        if (
+          hostname === 'youtube.com' ||
+          hostname.endsWith('.youtube.com') ||
+          hostname === 'youtu.be' ||
+          hostname.endsWith('.youtu.be')
+        ) {
+          return "Video";
+        }
+      } catch {
+        // Ignore malformed URLs and fall back to text-based reading time.
+      }
     }
     const text = bookmark.content || bookmark.summary || bookmark.description || "";
     if (!text) return "1 min";
