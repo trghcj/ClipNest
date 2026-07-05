@@ -9,6 +9,9 @@
     "storage",
     "scripting"
   ],
+  "host_permissions": [
+    "https://clipnest-backend.onrender.com/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
