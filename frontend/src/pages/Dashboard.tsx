@@ -350,18 +350,18 @@ const Dashboard = () => {
                   </div>
                 )}
                 
-                <div className={`mt-auto flex items-center justify-between pt-4 border-t border-border/50 ${(!bookmark.tags || bookmark.tags.length === 0) && !bookmark.description ? 'mt-auto' : ''}`}>
-                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                <div className={`mt-auto flex flex-wrap items-center justify-between gap-y-2 pt-4 border-t border-border/50 ${(!bookmark.tags || bookmark.tags.length === 0) && !bookmark.description ? 'mt-auto' : ''}`}>
+                  <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">
                     {new Date(bookmark.created_at).toLocaleDateString()}
                   </span>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex flex-wrap items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         setReaderBookmark(bookmark);
                         setIsReaderOpen(true);
                       }}
-                      className="p-1.5 text-muted-foreground hover:text-green-500 hover:bg-green-500/10 rounded-md transition-colors"
+                      className="p-1 text-muted-foreground hover:text-green-500 hover:bg-green-500/10 rounded-md transition-colors"
                       title="Read Article"
                     >
                       <BookOpen className="w-4 h-4" />
@@ -372,7 +372,7 @@ const Dashboard = () => {
                         setAnnotationsBookmark(bookmark);
                         setIsAnnotationsOpen(true);
                       }}
-                      className="p-1.5 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10 rounded-md transition-colors"
+                      className="p-1 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10 rounded-md transition-colors"
                       title="View Highlights"
                     >
                       <Highlighter className="w-4 h-4" />
@@ -385,21 +385,21 @@ const Dashboard = () => {
                           updates: { is_archived: !bookmark.is_archived }
                         });
                       }}
-                      className={`p-1.5 rounded-md transition-colors ${bookmark.is_archived ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
+                      className={`p-1 rounded-md transition-colors ${bookmark.is_archived ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
                       title={bookmark.is_archived ? "Unarchive" : "Archive"}
                     >
                       {bookmark.is_archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                     </button>
                     <button 
                       onClick={(e) => openEditModal(e, bookmark)}
-                      className="p-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
+                      className="p-1 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
                       title="Edit"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={(e) => handleDelete(e, bookmark.id)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                      className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -409,7 +409,7 @@ const Dashboard = () => {
                       target="_blank" 
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors ml-1"
+                      className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors ml-0.5"
                       title="Open Link"
                     >
                       <ExternalLink className="w-4 h-4" />
