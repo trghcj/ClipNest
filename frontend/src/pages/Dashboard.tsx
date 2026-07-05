@@ -7,6 +7,7 @@ import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from 
 import type { Bookmark } from '../services/bookmarks';
 import { Bookmark as BookmarkIcon, Plus, Loader2, Sparkles, BookOpen, Clock, Folder, Tag as TagIcon, TrendingUp, Star, Archive } from 'lucide-react';
 import { ReaderModal } from '../components/ReaderModal';
+import { AnnotationsModal } from '../components/AnnotationsModal';
 import { BookmarkCard } from '../components/BookmarkCard';
 import { motion } from 'framer-motion';
 
@@ -25,6 +26,9 @@ const Dashboard = () => {
 
   const [readerBookmark, setReaderBookmark] = useState<Bookmark | null>(null);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
+  
+  const [annotationsBookmark, setAnnotationsBookmark] = useState<Bookmark | null>(null);
+  const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -142,6 +146,7 @@ const Dashboard = () => {
                 onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
                 onDelete={(id) => window.confirm("Delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
                 onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
+                onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
               />
             </div>
           ))}
@@ -302,6 +307,7 @@ const Dashboard = () => {
                 onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
                 onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
                 onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
+                onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
               />
             </div>
           ))}
@@ -386,6 +392,12 @@ const Dashboard = () => {
         isOpen={isReaderOpen}
         onClose={() => setIsReaderOpen(false)}
         bookmark={readerBookmark}
+      />
+      
+      <AnnotationsModal 
+        isOpen={isAnnotationsOpen}
+        onClose={() => setIsAnnotationsOpen(false)}
+        bookmark={annotationsBookmark}
       />
     </div>
   );

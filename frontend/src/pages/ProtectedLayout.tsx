@@ -6,7 +6,7 @@ import { getCollections, createCollection, updateCollection, deleteCollection } 
 import { ThemeToggle } from '../components/ThemeToggle';
 import { AISearchModal } from '../components/AISearchModal';
 import { TagsModal } from '../components/TagsModal';
-import { Plus, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarChart2, Search } from 'lucide-react';
+import { Plus, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarChart2, Search, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { auth, logoutUser } from '../services/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +25,8 @@ const ProtectedLayout = () => {
   const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
   const currentCollectionId = searchParams.get('collectionId');
   const queryClient = useQueryClient();
+
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
@@ -107,41 +109,80 @@ const ProtectedLayout = () => {
   return (
     <div className="flex h-screen w-full bg-background font-sans">
       {/* Sidebar */}
-      <div className="w-64 bg-secondary flex flex-col p-4 shadow-[1px_0_10px_rgba(0,0,0,0.02)] z-10 border-none">
-        <h1 
-          className="text-xl font-display font-bold text-foreground mb-8 flex items-center gap-2 cursor-pointer"
-          onClick={() => navigate('/')}
-        >
-          <img src="/Clipnest_Logo.png" alt="ClipNest Logo" className="w-10 h-10 object-contain scale-125 -ml-1" />
-          ClipNest
-        </h1>
+      <motion.div 
+        animate={{ width: isSidebarExpanded ? 256 : 80 }}
+        transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+        className="bg-secondary flex flex-col p-4 shadow-[1px_0_10px_rgba(0,0,0,0.02)] z-10 border-none overflow-hidden shrink-0 relative"
+      >
+        <div className={`flex items-center ${isSidebarExpanded ? 'justify-between' : 'justify-center'} mb-8 relative`}>
+          <div 
+            className={`flex items-center gap-2 cursor-pointer text-xl font-display font-bold text-foreground overflow-hidden whitespace-nowrap`}
+            onClick={() => navigate('/')}
+          >
+            <img src="/Clipnest_Logo.png" alt="ClipNest Logo" className="w-10 h-10 object-contain scale-125 -ml-1 flex-shrink-0" />
+            <AnimatePresence>
+              {isSidebarExpanded && (
+                <motion.span 
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="overflow-hidden whitespace-nowrap"
+                >
+                  ClipNest
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
+          <button 
+            onClick={() => setIsSidebarExpanded(!isSidebarExpanded)} 
+            className={`p-1.5 text-foreground-secondary hover:bg-[#DCE8D2] hover:text-primary rounded-lg transition-colors ${!isSidebarExpanded ? 'absolute top-12 left-1/2 -translate-x-1/2 mt-2 bg-[#DCE8D2]/50' : ''}`}
+            title={isSidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
+          >
+            {isSidebarExpanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+          </button>
+        </div>
         
-        <nav className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+        <nav className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar overflow-x-hidden">
           <div className="space-y-1">
             <motion.button 
-              whileHover={{ x: 4 }}
+              whileHover={{ x: isSidebarExpanded ? 4 : 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => navigate('/')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${!currentCollectionId ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
+              title="All Bookmarks"
+              className={`w-full flex items-center ${isSidebarExpanded ? 'gap-3 px-3' : 'justify-center px-0'} py-2 rounded-lg transition-colors text-sm font-medium ${!currentCollectionId ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
             >
-              <Home className={`w-4 h-4 ${!currentCollectionId ? 'text-primary' : 'text-foreground-secondary'}`} />
-              All Bookmarks
+              <Home className={`w-5 h-5 flex-shrink-0 ${!currentCollectionId ? 'text-primary' : 'text-foreground-secondary'}`} />
+              <AnimatePresence>
+                {isSidebarExpanded && (
+                  <motion.span 
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
+                    className="overflow-hidden whitespace-nowrap"
+                  >
+                    All Bookmarks
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </motion.button>
           </div>
 
           <div className="space-y-1">
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-xs font-semibold text-foreground-secondary/70 uppercase tracking-wider">Collections</span>
+            <div className={`flex items-center ${isSidebarExpanded ? 'justify-between px-3' : 'justify-center px-0'} py-2`}>
+              {isSidebarExpanded && <span className="text-xs font-semibold text-foreground-secondary/70 uppercase tracking-wider">Collections</span>}
               <button 
-                onClick={() => setIsCreatingCollection(true)}
-                className="text-foreground-secondary/70 hover:text-primary transition-colors"
+                onClick={() => {
+                  if (!isSidebarExpanded) setIsSidebarExpanded(true);
+                  setIsCreatingCollection(true);
+                }}
+                className="text-foreground-secondary/70 hover:text-primary transition-colors hover:bg-black/5 p-1 rounded-md"
                 title="New Collection"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
             
-            {isCreatingCollection && (
+            {isCreatingCollection && isSidebarExpanded && (
               <form onSubmit={handleCreateCollection} className="px-3 py-2">
                 <input
                   autoFocus
@@ -157,12 +198,12 @@ const ProtectedLayout = () => {
 
             {collections.map((collection: any) => (
               <motion.div 
-                whileHover={{ x: 4 }}
+                whileHover={{ x: isSidebarExpanded ? 4 : 0 }}
                 transition={{ duration: 0.2 }}
                 key={collection.id} 
-                className={`group flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${currentCollectionId === collection.id ? 'bg-[#DCE8D2]' : 'hover:bg-[#DCE8D2]/50'}`}
+                className={`group flex items-center ${isSidebarExpanded ? 'justify-between px-3' : 'justify-center px-0'} py-2 rounded-lg transition-colors ${currentCollectionId === collection.id ? 'bg-[#DCE8D2]' : 'hover:bg-[#DCE8D2]/50'}`}
               >
-                {editingCollectionId === collection.id ? (
+                {editingCollectionId === collection.id && isSidebarExpanded ? (
                   <form 
                     className="flex-1 flex items-center gap-2"
                     onSubmit={(e) => {
@@ -174,7 +215,7 @@ const ProtectedLayout = () => {
                       }
                     }}
                   >
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getCollectionColor(collection.name) }} />
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm" style={{ backgroundColor: getCollectionColor(collection.name) }} />
                     <input 
                       autoFocus
                       type="text"
@@ -188,34 +229,37 @@ const ProtectedLayout = () => {
                   <>
                     <button 
                       onClick={() => navigate(`/?collectionId=${collection.id}`)}
-                      className={`flex-1 flex items-center gap-3 text-sm font-medium truncate ${currentCollectionId === collection.id ? 'text-foreground' : 'text-foreground-secondary'}`}
+                      title={collection.name}
+                      className={`flex-1 flex items-center ${isSidebarExpanded ? 'gap-3 text-sm' : 'justify-center text-lg'} font-medium truncate ${currentCollectionId === collection.id ? 'text-foreground' : 'text-foreground-secondary'}`}
                     >
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm" style={{ backgroundColor: getCollectionColor(collection.name) }} />
-                      <span className="truncate">{collection.name}</span>
+                      <div className={`${isSidebarExpanded ? 'w-2.5 h-2.5' : 'w-4 h-4'} rounded-full flex-shrink-0 shadow-sm`} style={{ backgroundColor: getCollectionColor(collection.name) }} />
+                      {isSidebarExpanded && <span className="truncate">{collection.name}</span>}
                     </button>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => {
-                          setEditingCollectionId(collection.id);
-                          setEditCollectionName(collection.name);
-                        }}
-                        className="p-1 text-foreground-secondary hover:text-primary rounded-md transition-colors"
-                        title="Rename Collection"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        onClick={() => {
-                          if (window.confirm("Delete this collection? Bookmarks will not be deleted.")) {
-                            deleteCollectionMutation.mutate(collection.id);
-                          }
-                        }}
-                        className="p-1 text-foreground-secondary hover:text-destructive rounded-md transition-colors"
-                        title="Delete Collection"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    {isSidebarExpanded && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            setEditingCollectionId(collection.id);
+                            setEditCollectionName(collection.name);
+                          }}
+                          className="p-1 text-foreground-secondary hover:text-primary rounded-md transition-colors"
+                          title="Rename Collection"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (window.confirm("Delete this collection? Bookmarks will not be deleted.")) {
+                              deleteCollectionMutation.mutate(collection.id);
+                            }
+                          }}
+                          className="p-1 text-foreground-secondary hover:text-destructive rounded-md transition-colors"
+                          title="Delete Collection"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </motion.div>
@@ -224,16 +268,17 @@ const ProtectedLayout = () => {
 
           <div className="space-y-1 pt-2 border-t border-border/50">
             <motion.button 
-              whileHover={{ x: 4 }}
+              whileHover={{ x: isSidebarExpanded ? 4 : 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setIsTagsModalOpen(true)}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-foreground-secondary hover:bg-[#DCE8D2]/50 rounded-lg transition-colors"
+              title="Tags"
+              className={`w-full flex items-center ${isSidebarExpanded ? 'gap-3 px-3' : 'justify-center px-0'} py-2 text-sm font-medium text-foreground-secondary hover:bg-[#DCE8D2]/50 rounded-lg transition-colors`}
             >
-              <Tag className="w-4 h-4" />
-              Tags
+              <Tag className="w-5 h-5 flex-shrink-0" />
+              {isSidebarExpanded && <span className="whitespace-nowrap overflow-hidden">Tags</span>}
             </motion.button>
             <motion.button 
-              whileHover={{ x: 4 }}
+              whileHover={{ x: isSidebarExpanded ? 4 : 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => {
                 const newParams = new URLSearchParams(searchParams);
@@ -244,23 +289,25 @@ const ProtectedLayout = () => {
                 }
                 navigate({ search: newParams.toString() });
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${searchParams.get('view') === 'archive' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
+              title={searchParams.get('view') === 'archive' ? 'Back to All Bookmarks' : 'Archived'}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'gap-3 px-3' : 'justify-center px-0'} py-2 text-sm font-medium rounded-lg transition-colors ${searchParams.get('view') === 'archive' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
             >
-              <Archive className={`w-4 h-4 ${searchParams.get('view') === 'archive' ? 'text-primary' : 'text-foreground-secondary'}`} />
-              {searchParams.get('view') === 'archive' ? 'Back to All Bookmarks' : 'Archived'}
+              <Archive className={`w-5 h-5 flex-shrink-0 ${searchParams.get('view') === 'archive' ? 'text-primary' : 'text-foreground-secondary'}`} />
+              {isSidebarExpanded && <span className="whitespace-nowrap overflow-hidden">{searchParams.get('view') === 'archive' ? 'Back to All Bookmarks' : 'Archived'}</span>}
             </motion.button>
             <motion.button 
-              whileHover={{ x: 4 }}
+              whileHover={{ x: isSidebarExpanded ? 4 : 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => navigate('/analytics')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${window.location.pathname === '/analytics' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
+              title="Analytics"
+              className={`w-full flex items-center ${isSidebarExpanded ? 'gap-3 px-3' : 'justify-center px-0'} py-2 text-sm font-medium rounded-lg transition-colors ${window.location.pathname === '/analytics' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
             >
-              <BarChart2 className={`w-4 h-4 ${window.location.pathname === '/analytics' ? 'text-primary' : 'text-foreground-secondary'}`} />
-              Analytics
+              <BarChart2 className={`w-5 h-5 flex-shrink-0 ${window.location.pathname === '/analytics' ? 'text-primary' : 'text-foreground-secondary'}`} />
+              {isSidebarExpanded && <span className="whitespace-nowrap overflow-hidden">Analytics</span>}
             </motion.button>
           </div>
         </nav>
-      </div>
+      </motion.div>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
         {/* Topbar */}

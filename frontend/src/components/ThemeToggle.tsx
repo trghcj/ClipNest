@@ -13,7 +13,7 @@ export const ThemeToggle = () => {
   return (
     <button
       onClick={cycleTheme}
-      className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+      className="relative w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary-hover transition-colors shadow-sm"
       title={`Current theme: ${theme}. Click to change.`}
     >
       {theme === 'light' && <Sun className="w-5 h-5" />}

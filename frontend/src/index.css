@@ -3,35 +3,91 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@layer base {
+  :root {
+    --color-background-var: #F8F6F1;
+    --color-sidebar-var: #EEF2E6;
+    --color-foreground-var: #2F3A2F;
+    --color-foreground-secondary-var: #66725F;
+    --color-card-var: #FFFEFC;
+    --color-card-foreground-var: #2F3A2F;
+    --color-popover-var: #FFFEFC;
+    --color-popover-foreground-var: #2F3A2F;
+    --color-primary-var: #607D4E;
+    --color-primary-hover-var: #4E6B44;
+    --color-primary-foreground-var: #FFFFFF;
+    --color-secondary-var: #EEF2E6;
+    --color-secondary-foreground-var: #66725F;
+    --color-muted-var: #EEF2E6;
+    --color-muted-foreground-var: #66725F;
+    --color-accent-var: #A3B18A;
+    --color-accent-foreground-var: #FFFFFF;
+    --color-destructive-var: #C85C5C;
+    --color-destructive-foreground-var: #FFFFFF;
+    --color-success-var: #5B8A52;
+    --color-warning-var: #D4A373;
+    --color-border-var: #E5E8DD;
+    --color-input-var: #E5E8DD;
+    --color-ring-var: #607D4E;
+  }
+
+  .dark {
+    --color-background-var: #171A17;
+    --color-sidebar-var: #1C211C;
+    --color-foreground-var: #EAECE8;
+    --color-foreground-secondary-var: #93A193;
+    --color-card-var: #1C211C;
+    --color-card-foreground-var: #EAECE8;
+    --color-popover-var: #1C211C;
+    --color-popover-foreground-var: #EAECE8;
+    --color-primary-var: #85A36F;
+    --color-primary-hover-var: #99B982;
+    --color-primary-foreground-var: #171A17;
+    --color-secondary-var: #262E26;
+    --color-secondary-foreground-var: #A0B0A0;
+    --color-muted-var: #262E26;
+    --color-muted-foreground-var: #A0B0A0;
+    --color-accent-var: #4E6B44;
+    --color-accent-foreground-var: #EAECE8;
+    --color-destructive-var: #D66E6E;
+    --color-destructive-foreground-var: #FFFFFF;
+    --color-success-var: #6BA860;
+    --color-warning-var: #DFAD7E;
+    --color-border-var: #333D33;
+    --color-input-var: #333D33;
+    --color-ring-var: #85A36F;
+  }
+}
+
 @theme {
-  --color-background: #F8F6F1;
-  --color-sidebar: #EEF2E6;
-  --color-foreground: #2F3A2F;
-  --color-foreground-secondary: #66725F;
-  --color-card: #FFFEFC;
-  --color-card-foreground: #2F3A2F;
-  --color-popover: #FFFEFC;
-  --color-popover-foreground: #2F3A2F;
-  --color-primary: #607D4E;
-  --color-primary-hover: #4E6B44;
-  --color-primary-foreground: #FFFFFF;
-  --color-secondary: #EEF2E6;
-  --color-secondary-foreground: #66725F;
-  --color-muted: #EEF2E6;
-  --color-muted-foreground: #66725F;
-  --color-accent: #A3B18A;
-  --color-accent-foreground: #FFFFFF;
-  --color-destructive: #C85C5C;
-  --color-destructive-foreground: #FFFFFF;
-  --color-success: #5B8A52;
-  --color-warning: #D4A373;
-  --color-border: #E5E8DD;
-  --color-input: #E5E8DD;
-  --color-ring: #607D4E;
-  
-  --font-sans: 'Inter', sans-serif;
-  --font-display: 'Plus Jakarta Sans', sans-serif;
-  
+  --color-background: var(--color-background-var);
+  --color-sidebar: var(--color-sidebar-var);
+  --color-foreground: var(--color-foreground-var);
+  --color-foreground-secondary: var(--color-foreground-secondary-var);
+  --color-card: var(--color-card-var);
+  --color-card-foreground: var(--color-card-foreground-var);
+  --color-popover: var(--color-popover-var);
+  --color-popover-foreground: var(--color-popover-foreground-var);
+  --color-primary: var(--color-primary-var);
+  --color-primary-hover: var(--color-primary-hover-var);
+  --color-primary-foreground: var(--color-primary-foreground-var);
+  --color-secondary: var(--color-secondary-var);
+  --color-secondary-foreground: var(--color-secondary-foreground-var);
+  --color-muted: var(--color-muted-var);
+  --color-muted-foreground: var(--color-muted-foreground-var);
+  --color-accent: var(--color-accent-var);
+  --color-accent-foreground: var(--color-accent-foreground-var);
+  --color-destructive: var(--color-destructive-var);
+  --color-destructive-foreground: var(--color-destructive-foreground-var);
+  --color-success: var(--color-success-var);
+  --color-warning: var(--color-warning-var);
+  --color-border: var(--color-border-var);
+  --color-input: var(--color-input-var);
+  --color-ring: var(--color-ring-var);
+
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 8px;

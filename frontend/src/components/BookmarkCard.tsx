@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Star, Archive, Trash2, Clock } from 'lucide-react';
+import { ExternalLink, Star, Archive, Trash2, Clock, BookOpen, Highlighter } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface BookmarkCardProps {
@@ -8,6 +8,7 @@ interface BookmarkCardProps {
   onToggleArchive: (id: string, current: boolean) => void;
   onDelete: (id: string) => void;
   onClick: (bookmark: any) => void;
+  onHighlightClick: (bookmark: any) => void;
 }
 
 export const BookmarkCard: React.FC<BookmarkCardProps> = ({
@@ -15,7 +16,8 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   onToggleFavorite,
   onToggleArchive,
   onDelete,
-  onClick
+  onClick,
+  onHighlightClick
 }) => {
   // Calculate reading time based on summary word count if content doesn't exist.
   // Standard reading speed is ~200 words per minute.
@@ -81,6 +83,20 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             title="Open original link"
           >
             <ExternalLink className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onClick(bookmark); }}
+            className="w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
+            title="Read Article"
+          >
+            <BookOpen className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onHighlightClick(bookmark); }}
+            className="w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
+            title="View Highlights"
+          >
+            <Highlighter className="w-4 h-4" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(bookmark.id, bookmark.is_favorite); }}
