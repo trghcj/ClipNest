@@ -62,41 +62,55 @@ async def delete_collection(collection_id: str, db: Session = Depends(get_db), c
 
 @router.post("/{collection_id}/bookmarks/{bookmark_id}")
 async def add_bookmark_to_collection(collection_id: str, bookmark_id: str, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
-    # Verify collection exists and belongs to user
-    col_stmt = select(Collection).where(Collection.id == collection_id, Collection.user_id == current_user)
-    col_result = await db.execute(col_stmt)
-    if not col_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Collection not found")
-        
-    # Verify bookmark exists and belongs to user
-    bm_stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
-    bm_result = await db.execute(bm_stmt)
-    if not bm_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Bookmark not found")
-        
-    # Add mapping
     try:
+        # Verify collection exists and belongs to user
+        col_stmt = select(Collection).where(Collection.id == collection_id, Collection.user_id == current_user)
+        col_result = await db.execute(col_stmt)
+        if not col_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        # Verify bookmark exists and belongs to user
+        bm_stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
+        bm_result = await db.execute(bm_stmt)
+        if not bm_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Bookmark not found")
+            
+        # Add mapping
         db_col_bm = CollectionBookmark(collection_id=collection_id, bookmark_id=bookmark_id)
         db.add(db_col_bm)
         await db.commit()
-    except Exception:
-        # Ignore if already exists (constraint violation)
+    except HTTPException:
+        raise
+    except Exception as e:
         await db.rollback()
-        pass
-        
+        print(f"Error in add_bookmark_to_collection: {str(e)}")
+        # If it's just a duplicate, ignore it
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            pass
+        else:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+            
     return {"ok": True}
 
 @router.delete("/{collection_id}/bookmarks/{bookmark_id}")
 async def remove_bookmark_from_collection(collection_id: str, bookmark_id: str, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
-    # Verify collection belongs to user
-    col_stmt = select(Collection).where(Collection.id == collection_id, Collection.user_id == current_user)
-    col_result = await db.execute(col_stmt)
-    if not col_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Collection not found")
+    try:
+        # Verify collection belongs to user
+        col_stmt = select(Collection).where(Collection.id == collection_id, Collection.user_id == current_user)
+        col_result = await db.execute(col_stmt)
+        if not col_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        stmt = delete(CollectionBookmark).where(CollectionBookmark.collection_id == collection_id, CollectionBookmark.bookmark_id == bookmark_id)
+        await db.execute(stmt)
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        print(f"Error in remove_bookmark_from_collection: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
         
-    stmt = delete(CollectionBookmark).where(CollectionBookmark.collection_id == collection_id, CollectionBookmark.bookmark_id == bookmark_id)
-    await db.execute(stmt)
-    await db.commit()
     return {"ok": True}
 
 @router.get("/{collection_id}/bookmarks", response_model=List[BookmarkResponse])
