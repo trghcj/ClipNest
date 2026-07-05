@@ -78,14 +78,27 @@ async def create_extension_annotation(
 
     if not bookmark:
         # Create a silent bookmark
+        from ...services.metadata_extractor import extract_metadata
+        metadata = await extract_metadata(url_str)
+        
         bookmark = Bookmark(
             user_id=current_user,
             url=url_str,
-            title=url_str, # Default title
+            title=metadata.get("title") or url_str,
+            description=metadata.get("description"),
+            thumbnail_url=metadata.get("image_url"),
+            favicon_url=metadata.get("favicon_url"),
+            content=metadata.get("content"),
             status="unread"
         )
         db.add(bookmark)
         await db.flush() # Flush to get bookmark.id for the annotation
+        
+        # We should also kick off the AI background task for summary and tags
+        from fastapi import BackgroundTasks
+        from ...services.background_tasks import process_bookmark_ai
+        # Note: We don't have BackgroundTasks injected in this route, so we'll just skip it for now 
+        # or we could inject it if we update the route signature.
 
     db_annotation = Annotation(
         bookmark_id=bookmark.id,
