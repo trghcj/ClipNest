@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Star, Archive, Trash2, Clock, BookOpen, Highlighter } from 'lucide-react';
+import { ExternalLink, Star, Archive, Trash2, Clock, BookOpen, Highlighter, Edit2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface BookmarkCardProps {
@@ -9,6 +9,7 @@ interface BookmarkCardProps {
   onDelete: (id: string) => void;
   onClick: (bookmark: any) => void;
   onHighlightClick: (bookmark: any) => void;
+  onEditClick: (bookmark: any) => void;
 }
 
 export const BookmarkCard: React.FC<BookmarkCardProps> = ({
@@ -17,7 +18,8 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   onToggleArchive,
   onDelete,
   onClick,
-  onHighlightClick
+  onHighlightClick,
+  onEditClick
 }) => {
   // Calculate reading time based on summary word count if content doesn't exist.
   // Standard reading speed is ~200 words per minute.
@@ -113,13 +115,6 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           >
             <Highlighter className="w-3.5 h-3.5" />
           </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite(bookmark.id, bookmark.is_favorite); }}
-            className={`w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${bookmark.is_favorite ? 'text-yellow-500' : 'text-foreground hover:text-yellow-500'}`}
-            title="Toggle Favorite"
-          >
-            <Star className={`w-3.5 h-3.5 ${bookmark.is_favorite ? 'fill-current' : ''}`} />
-          </button>
         </div>
         
         {/* Status Badge */}
@@ -176,6 +171,20 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             <span>{formatDate(bookmark.created_at)}</span>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(bookmark.id, bookmark.is_favorite); }}
+              className={`p-1.5 rounded-md transition-colors ${bookmark.is_favorite ? 'text-yellow-500 hover:bg-yellow-500/10' : 'text-foreground-secondary hover:text-yellow-500 hover:bg-yellow-500/10'}`}
+              title="Toggle Favorite"
+            >
+              <Star className={`w-3.5 h-3.5 ${bookmark.is_favorite ? 'fill-current' : ''}`} />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEditClick(bookmark); }}
+              className="p-1.5 text-foreground-secondary hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+              title="Edit Bookmark"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onToggleArchive(bookmark.id, bookmark.is_archive); }}
               className="p-1.5 text-foreground-secondary hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
