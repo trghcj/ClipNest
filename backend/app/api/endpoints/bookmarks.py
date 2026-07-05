@@ -39,7 +39,7 @@ async def create_bookmark(bookmark: BookmarkCreate, background_tasks: Background
     await db.refresh(db_bookmark)
     
     # Spawn AI tagging and summarization in background
-    background_tasks.add_task(process_bookmark_ai, db_bookmark.id, db_bookmark.url, db_bookmark.title or "", db_bookmark.description or "")
+    background_tasks.add_task(process_bookmark_ai, db_bookmark.id, db_bookmark.url, db_bookmark.title or "", db_bookmark.description or "", db_bookmark.content)
     
     return db_bookmark
 

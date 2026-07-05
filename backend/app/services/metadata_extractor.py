@@ -12,6 +12,11 @@ async def extract_metadata(url: str) -> dict:
         # Reconstruct URL to prevent SSRF tricks
         safe_url = parsed_url.geturl()
         
+        # Check for PDF
+        if parsed_url.path.lower().endswith('.pdf'):
+            from .pdf_extractor import extract_pdf_metadata
+            return await extract_pdf_metadata(url, safe_url)
+        
         domain = parsed_url.netloc.lower()
         is_youtube = domain == "youtube.com" or domain.endswith(".youtube.com") or domain == "youtu.be"
         

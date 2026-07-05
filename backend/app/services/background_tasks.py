@@ -6,7 +6,7 @@ from app.models.tag import Tag
 from app.services.ai_service import generate_bookmark_metadata
 from sqlalchemy import select, insert
 
-async def process_bookmark_ai(bookmark_id: str, url: str, title: str, description: str):
+async def process_bookmark_ai(bookmark_id: str, url: str, title: str, description: str, content: str = None):
     """Background task to generate AI tags, summary, and auto-categorization."""
     async with AsyncSessionLocal() as db:
         # Fetch the bookmark to get user_id
@@ -24,7 +24,7 @@ async def process_bookmark_ai(bookmark_id: str, url: str, title: str, descriptio
         collection_names = [c.name for c in user_collections]
 
         # Run the AI generation
-        ai_result = await generate_bookmark_metadata(url, title, description, collection_names)
+        ai_result = await generate_bookmark_metadata(url, title, description, collection_names, content)
         
         if not ai_result.summary and not ai_result.tags:
             return # Generation failed
