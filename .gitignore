@@ -22,3 +22,8 @@ build/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated guides and zips
+ClipNest-Extension.zip
+CLIPNEST_CONSTRUCTION_GUIDE.md
+CLIPNEST_GUIDE.md
