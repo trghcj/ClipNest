@@ -236,14 +236,14 @@ const Dashboard = () => {
             <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600">
               <TagIcon className="w-4 h-4" />
             </div>
-            AI Tags
+            Total Tags
           </div>
           <div className="text-3xl font-display font-bold text-foreground mb-2">
             {uniqueTags}
           </div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground-secondary">
-            <Sparkles className="w-3.5 h-3.5" />
-            Auto-generated
+            <TagIcon className="w-3.5 h-3.5" />
+            Across library
           </div>
         </motion.div>
       </div>
