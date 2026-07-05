@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Change this to your Vercel URL when deploying the extension!
     // e.g. const APP_URL = 'https://clipnest.vercel.app';
-    const APP_URL = 'http://localhost:5173';
+    const APP_URL = 'https://clipnest-tau.vercel.app';
     
     const targetUrl = `${APP_URL}/?saveUrl=${encodeURIComponent(currentUrl)}`;
     

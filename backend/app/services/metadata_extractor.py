@@ -1,6 +1,7 @@
 import httpx
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
+from readability import Document
 
 async def extract_metadata(url: str) -> dict:
     try:
@@ -80,11 +81,20 @@ async def extract_metadata(url: str) -> dict:
             parsed_uri = urlparse(url)
             favicon_url = f"{parsed_uri.scheme}://{parsed_uri.netloc}/favicon.ico"
 
+        # Extract Readability Content
+        clean_content = ""
+        try:
+            doc = Document(response.text)
+            clean_content = doc.summary()
+        except Exception as e:
+            print(f"Readability extraction failed: {e}")
+
         return {
             "title": title.strip() if title else "",
             "description": description.strip() if description else "",
             "image_url": image_url.strip() if image_url else "",
             "favicon_url": favicon_url.strip() if favicon_url else "",
+            "content": clean_content
         }
     except Exception as e:
         print(f"Error extracting metadata for {url}: {e}")
@@ -93,4 +103,5 @@ async def extract_metadata(url: str) -> dict:
             "description": "",
             "image_url": "",
             "favicon_url": "",
+            "content": ""
         }

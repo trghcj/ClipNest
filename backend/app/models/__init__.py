@@ -4,3 +4,4 @@ from app.models.tag import Tag, BookmarkTag
 from app.models.collection import Collection, CollectionBookmark
 from app.models.note import Note
 from app.models.activity import Pdf, ActivityLog
+from app.models.annotation import Annotation

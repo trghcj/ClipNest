@@ -12,6 +12,7 @@ from typing import List
 class AIResult(BaseModel):
     summary: str
     tags: List[str]
+    suggested_collection: str | None = None
 
 class AISearchResult(BaseModel):
     matching_ids: List[str]
@@ -55,13 +56,13 @@ def extract_youtube_video_id(url: str) -> str:
     match = re.search(pattern, url)
     return match.group(1) if match else ""
 
-async def generate_bookmark_metadata(url: str, title: str, description: str) -> AIResult:
-    """Uses Gemini to generate a summary and tags based on webpage content."""
+async def generate_bookmark_metadata(url: str, title: str, description: str, user_collections: List[str] = []) -> AIResult:
+    """Uses Gemini to generate a summary, tags, and auto-categorization."""
     client = get_genai_client()
     
     # Fallback if no API key
     if not client:
-        return AIResult(summary="", tags=[])
+        return AIResult(summary="", tags=[], suggested_collection=None)
 
     content_text = ""
     is_youtube = False
@@ -97,6 +98,7 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
         Read the following raw transcript from a YouTube video and provide:
         1. A concise, 2-sentence summary of the main points discussed in the video.
         2. A list of 3 to 5 highly relevant, single-word tags (lowercase).
+        3. A suggested collection name based on the content. Choose from this list of the user's existing collections: {user_collections}. If none fit well, suggest a new short collection name. If the list is empty, suggest a new short collection name.
 
         Video Transcript:
         {content_text}
@@ -107,6 +109,7 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
         Read the following extracted webpage content and provide:
         1. A concise, 2-sentence summary of the main points.
         2. A list of 3 to 5 highly relevant, single-word tags (lowercase).
+        3. A suggested collection name based on the content. Choose from this list of the user's existing collections: {user_collections}. If none fit well, suggest a new short collection name. If the list is empty, suggest a new short collection name.
 
         Webpage Content:
         {content_text}
@@ -129,7 +132,7 @@ async def generate_bookmark_metadata(url: str, title: str, description: str) -> 
         return AIResult(**result_dict)
     except Exception as e:
         print(f"Error generating AI metadata: {e}")
-        return AIResult(summary="", tags=[])
+        return AIResult(summary="", tags=[], suggested_collection=None)
 
 async def perform_semantic_search(query: str, bookmarks_data: str) -> List[str]:
     """Uses Gemini to find bookmarks matching a natural language query."""
