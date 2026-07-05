@@ -13,6 +13,7 @@ class BookmarkBase(BaseModel):
     is_favorite: Optional[bool] = False
     is_archived: Optional[bool] = False
     ai_summary: Optional[str] = None
+    content: Optional[str] = None
 
 class BookmarkCreate(BookmarkBase):
     pass
@@ -40,6 +41,7 @@ class URLMetadataResponse(BaseModel):
     description: str
     image_url: str
     favicon_url: str
+    content: Optional[str] = None
 
 class AISearchRequest(BaseModel):
     query: str

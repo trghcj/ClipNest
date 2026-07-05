@@ -7,7 +7,9 @@ import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBo
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import { createTag, addTagToBookmark } from '../services/tags';
 import type { Bookmark } from '../services/bookmarks';
-import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles, Archive, ArchiveRestore } from 'lucide-react';
+import { Link as LinkIcon, Plus, Trash2, ExternalLink, Loader2, Edit2, Tag as TagIcon, Sparkles, Archive, ArchiveRestore, BookOpen, Highlighter } from 'lucide-react';
+import { ReaderModal } from '../components/ReaderModal';
+import { AnnotationsModal } from '../components/AnnotationsModal';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -31,6 +33,12 @@ const Dashboard = () => {
   const [editDescription, setEditDescription] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const [editTags, setEditTags] = useState('');
+  
+  const [readerBookmark, setReaderBookmark] = useState<Bookmark | null>(null);
+  const [isReaderOpen, setIsReaderOpen] = useState(false);
+  
+  const [annotationsBookmark, setAnnotationsBookmark] = useState<Bookmark | null>(null);
+  const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -115,6 +123,7 @@ const Dashboard = () => {
         description: metadata.description,
         thumbnail_url: metadata.image_url,
         favicon_url: metadata.favicon_url,
+        content: metadata.content,
       });
     } catch (error) {
       console.error("Failed to add bookmark", error);
@@ -349,6 +358,28 @@ const Dashboard = () => {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
+                        setReaderBookmark(bookmark);
+                        setIsReaderOpen(true);
+                      }}
+                      className="p-1.5 text-muted-foreground hover:text-green-500 hover:bg-green-500/10 rounded-md transition-colors"
+                      title="Read Article"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAnnotationsBookmark(bookmark);
+                        setIsAnnotationsOpen(true);
+                      }}
+                      className="p-1.5 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10 rounded-md transition-colors"
+                      title="View Highlights"
+                    >
+                      <Highlighter className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
                         updateBookmarkMutation.mutate({
                           id: bookmark.id,
                           updates: { is_archived: !bookmark.is_archived }
@@ -531,6 +562,18 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      
+      <ReaderModal 
+        isOpen={isReaderOpen}
+        onClose={() => setIsReaderOpen(false)}
+        bookmark={readerBookmark}
+      />
+      
+      <AnnotationsModal 
+        isOpen={isAnnotationsOpen}
+        onClose={() => setIsAnnotationsOpen(false)}
+        bookmark={annotationsBookmark}
+      />
     </div>
   );
 };

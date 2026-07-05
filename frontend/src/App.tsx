@@ -8,6 +8,7 @@ import { useThemeStore } from './store/themeStore';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
 import ProtectedLayout from './pages/ProtectedLayout';
 
 const queryClient = new QueryClient();
@@ -47,7 +48,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<Dashboard />} />
-            {/* Future routes will go here */}
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -31,7 +31,8 @@ async def create_bookmark(bookmark: BookmarkCreate, background_tasks: Background
         favicon_url=bookmark.favicon_url,
         is_favorite=bookmark.is_favorite,
         is_archived=bookmark.is_archived,
-        summary=bookmark.ai_summary
+        summary=bookmark.ai_summary,
+        content=bookmark.content
     )
     db.add(db_bookmark)
     await db.commit()

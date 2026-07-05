@@ -6,7 +6,7 @@ import { getCollections, createCollection, updateCollection, deleteCollection } 
 import { ThemeToggle } from '../components/ThemeToggle';
 import { AISearchModal } from '../components/AISearchModal';
 import { TagsModal } from '../components/TagsModal';
-import { Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive } from 'lucide-react';
+import { Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarChart2 } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { auth, logoutUser } from '../services/firebase';
 
@@ -230,6 +230,13 @@ const ProtectedLayout = () => {
             >
               <Archive className="w-4 h-4" />
               {searchParams.get('view') === 'archive' ? 'Back to All Bookmarks' : 'Archived'}
+            </button>
+            <button 
+              onClick={() => navigate('/analytics')}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${window.location.pathname === '/analytics' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              <BarChart2 className="w-4 h-4" />
+              Analytics
             </button>
           </div>
         </nav>
