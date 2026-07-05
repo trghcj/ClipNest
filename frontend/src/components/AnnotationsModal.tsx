@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Highlighter, Trash2, ExternalLink } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../services/api';
+import apiClient from '../services/api';
 import type { Bookmark } from '../services/bookmarks';
 
 interface AnnotationsModalProps {
@@ -24,7 +24,7 @@ export const AnnotationsModal: React.FC<AnnotationsModalProps> = ({ isOpen, onCl
     queryKey: ['annotations', bookmark?.id],
     queryFn: async () => {
       if (!bookmark) return [];
-      const res = await api.get(`annotations/bookmarks/${bookmark.id}/annotations`);
+      const res = await apiClient.get(`annotations/bookmarks/${bookmark.id}/annotations`);
       return res.data as Annotation[];
     },
     enabled: !!bookmark && isOpen
@@ -32,7 +32,7 @@ export const AnnotationsModal: React.FC<AnnotationsModalProps> = ({ isOpen, onCl
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`annotations/annotations/${id}`);
+      await apiClient.delete(`annotations/annotations/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['annotations', bookmark?.id] });

@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
 import { logoutUser } from '../services/firebase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark } from '../services/bookmarks';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../services/api';
+import apiClient from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Activity, BookOpen, Clock, Tag as TagIcon, Loader2 } from 'lucide-react';
 
@@ -16,7 +16,7 @@ export const AnalyticsDashboard: React.FC = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['analytics'],
     queryFn: async () => {
-      const res = await api.get('analytics/');
+      const res = await apiClient.get('analytics/');
       return res.data as AnalyticsData;
     }
   });

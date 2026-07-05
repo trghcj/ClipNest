@@ -6,7 +6,7 @@ import { getCollections, createCollection, updateCollection, deleteCollection } 
 import { ThemeToggle } from '../components/ThemeToggle';
 import { AISearchModal } from '../components/AISearchModal';
 import { TagsModal } from '../components/TagsModal';
-import { Link as LinkIcon, Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarChart2 } from 'lucide-react';
+import { Plus, Folder, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarChart2 } from 'lucide-react';
 import { updateProfile } from 'firebase/auth';
 import { auth, logoutUser } from '../services/firebase';
 
