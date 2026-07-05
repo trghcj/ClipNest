@@ -29,6 +29,31 @@ const Dashboard = () => {
   
   const [annotationsBookmark, setAnnotationsBookmark] = useState<Bookmark | null>(null);
   const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
+  const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+
+  const openEditModal = (bookmark: Bookmark) => {
+    setEditingBookmark(bookmark);
+    setEditTitle(bookmark.title || '');
+    setEditDescription(bookmark.description || '');
+    setEditUrl(bookmark.url || '');
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBookmark) return;
+    await updateBookmarkMutation.mutateAsync({
+      id: editingBookmark.id,
+      updates: {
+        title: editTitle,
+        description: editDescription,
+        url: editUrl,
+      }
+    });
+    setEditingBookmark(null);
+  };
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -147,6 +172,7 @@ const Dashboard = () => {
                 onDelete={(id) => window.confirm("Delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
                 onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
                 onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
+                onEditClick={openEditModal}
               />
             </div>
           ))}
@@ -308,6 +334,7 @@ const Dashboard = () => {
                 onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
                 onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
                 onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
+                onEditClick={openEditModal}
               />
             </div>
           ))}
@@ -390,15 +417,79 @@ const Dashboard = () => {
       
       <ReaderModal 
         isOpen={isReaderOpen}
-        onClose={() => setIsReaderOpen(false)}
+        onClose={() => {
+          setIsReaderOpen(false);
+          setReaderBookmark(null);
+        }}
         bookmark={readerBookmark}
       />
       
-      <AnnotationsModal 
-        isOpen={isAnnotationsOpen}
-        onClose={() => setIsAnnotationsOpen(false)}
-        bookmark={annotationsBookmark}
-      />
+      {isAnnotationsOpen && annotationsBookmark && (
+        <AnnotationsModal 
+          isOpen={isAnnotationsOpen}
+          onClose={() => {
+            setIsAnnotationsOpen(false);
+            setAnnotationsBookmark(null);
+          }}
+          bookmark={annotationsBookmark}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingBookmark && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md p-6 bg-card rounded-2xl shadow-xl border border-border"
+          >
+            <h3 className="text-xl font-display font-bold text-foreground mb-4">Edit Bookmark</h3>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1">Title</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1">Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary min-h-[80px]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1">URL</label>
+                <input
+                  type="url"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={() => setEditingBookmark(null)}
+                  className="px-4 py-2 text-sm font-semibold text-foreground-secondary hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-hover transition-colors shadow-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
