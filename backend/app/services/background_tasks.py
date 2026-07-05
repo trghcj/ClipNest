@@ -1,7 +1,7 @@
 import asyncio
 from app.core.database import AsyncSessionLocal
-from app.models.bookmark import Bookmark, collection_bookmarks
-from app.models.collection import Collection
+from app.models.bookmark import Bookmark
+from app.models.collection import Collection, CollectionBookmark
 from app.models.tag import Tag
 from app.services.ai_service import generate_bookmark_metadata
 from sqlalchemy import select, insert
@@ -45,11 +45,12 @@ async def process_bookmark_ai(bookmark_id: str, url: str, title: str, descriptio
                 await db.flush()
             
             # Check if bookmark is already in a collection
-            check_stmt = select(collection_bookmarks).where(collection_bookmarks.c.bookmark_id == bookmark.id)
+            check_stmt = select(CollectionBookmark).where(CollectionBookmark.bookmark_id == bookmark.id)
             has_col = await db.execute(check_stmt)
             if not has_col.first():
-                ins_stmt = insert(collection_bookmarks).values(collection_id=matched_col.id, bookmark_id=bookmark.id)
-                await db.execute(ins_stmt)
+                new_cb = CollectionBookmark(collection_id=matched_col.id, bookmark_id=bookmark.id)
+                db.add(new_cb)
+                await db.flush()
 
         # Process Tags
         for tag_name in ai_result.tags:
