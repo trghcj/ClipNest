@@ -33,9 +33,20 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       setLoading(false);
+      
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          window.postMessage({ type: 'CLIPNEST_AUTH_TOKEN', token }, '*');
+        } catch (e) {
+          console.error("Error getting auth token for extension", e);
+        }
+      } else {
+        window.postMessage({ type: 'CLIPNEST_AUTH_TOKEN', token: null }, '*');
+      }
     });
 
     return () => unsubscribe();
