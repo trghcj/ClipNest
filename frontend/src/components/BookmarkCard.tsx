@@ -105,20 +105,6 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           >
             <Star className={`w-4 h-4 ${bookmark.is_favorite ? 'fill-current' : ''}`} />
           </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onToggleArchive(bookmark.id, bookmark.is_archive); }}
-            className="w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
-            title={bookmark.is_archived ? "Unarchive" : "Archive"}
-          >
-            <Archive className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onDelete(bookmark.id); }}
-            className="w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-destructive transition-colors hover:scale-110 active:scale-95"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
         </div>
         
         {/* Status Badge */}
@@ -158,6 +144,22 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             </span>
             <span>•</span>
             <span>{formatDate(bookmark.created_at)}</span>
+          </div>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onToggleArchive(bookmark.id, bookmark.is_archive); }}
+              className="p-1.5 text-foreground-secondary hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+              title={bookmark.is_archived ? "Unarchive" : "Archive"}
+            >
+              <Archive className="w-3.5 h-3.5" />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(bookmark.id); }}
+              className="p-1.5 text-foreground-secondary hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </div>
