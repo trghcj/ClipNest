@@ -76,34 +76,34 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         )}
         
         {/* Quick Action Overlay (shows on hover) */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 translate-x-2 group-hover:translate-x-0">
+        <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 translate-x-2 group-hover:translate-x-0 z-10">
           <button 
             onClick={(e) => { e.stopPropagation(); window.open(bookmark.url, '_blank'); }}
-            className="w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
+            className="w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
             title="Open original link"
           >
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="w-3.5 h-3.5" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onClick(bookmark); }}
-            className="w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
+            className="w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
             title="Read Article"
           >
-            <BookOpen className="w-4 h-4" />
+            <BookOpen className="w-3.5 h-3.5" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onHighlightClick(bookmark); }}
-            className="w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
+            className="w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
             title="View Highlights"
           >
-            <Highlighter className="w-4 h-4" />
+            <Highlighter className="w-3.5 h-3.5" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(bookmark.id, bookmark.is_favorite); }}
-            className={`w-8 h-8 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${bookmark.is_favorite ? 'text-yellow-500' : 'text-foreground hover:text-yellow-500'}`}
+            className={`w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${bookmark.is_favorite ? 'text-yellow-500' : 'text-foreground hover:text-yellow-500'}`}
             title="Toggle Favorite"
           >
-            <Star className={`w-4 h-4 ${bookmark.is_favorite ? 'fill-current' : ''}`} />
+            <Star className={`w-3.5 h-3.5 ${bookmark.is_favorite ? 'fill-current' : ''}`} />
           </button>
         </div>
         
