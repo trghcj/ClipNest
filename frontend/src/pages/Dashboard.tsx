@@ -324,10 +324,38 @@ const Dashboard = () => {
           </button>
         </div>
       ) : isMainDashboard ? (
-        <div className="space-y-4">
-          {renderSection("Continue Reading", <BookOpen className="w-5 h-5" />, activeBookmarks.filter(b => b.status === 'reading' || b.status === 'unread').slice(0, 8))}
-          {renderSection("Recently Saved", <Clock className="w-5 h-5" />, [...activeBookmarks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 8))}
-          {renderSection("Favorites", <Star className="w-5 h-5" />, activeBookmarks.filter(b => b.is_favorite))}
+        <div className="space-y-8">
+          <div className="space-y-4">
+            {renderSection("Continue Reading", <BookOpen className="w-5 h-5" />, activeBookmarks.filter(b => b.status === 'reading' || b.status === 'unread').slice(0, 8))}
+            {renderSection("Recently Saved", <Clock className="w-5 h-5" />, [...activeBookmarks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 8))}
+            {renderSection("Favorites", <Star className="w-5 h-5" />, activeBookmarks.filter(b => b.is_favorite))}
+          </div>
+
+          {activeBookmarks.filter(b => !b.is_favorite).length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <BookmarkIcon className="w-4 h-4" />
+                </div>
+                <h3 className="text-xl font-display font-bold text-foreground">All Items</h3>
+              </div>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {activeBookmarks.filter(b => !b.is_favorite).map((bookmark) => (
+                  <div key={bookmark.id} className="h-[340px]">
+                    <BookmarkCard 
+                      bookmark={bookmark}
+                      onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
+                      onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
+                      onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
+                      onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
+                      onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
+                      onEditClick={openEditModal}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
