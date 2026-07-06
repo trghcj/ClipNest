@@ -28,7 +28,7 @@ export const deleteCollection = async (id: string): Promise<void> => {
 };
 
 export const addBookmarkToCollection = async (collectionId: string, bookmarkId: string): Promise<void> => {
-  await apiClient.post(`collections/${collectionId}/bookmarks/${bookmarkId}`);
+  await apiClient.post(`collections/${collectionId}/bookmarks/${bookmarkId}`, {});
 };
 
 export const removeBookmarkFromCollection = async (collectionId: string, bookmarkId: string): Promise<void> => {

@@ -330,20 +330,39 @@ const Dashboard = () => {
           {renderSection("Favorites", <Star className="w-5 h-5" />, activeBookmarks.filter(b => b.is_favorite))}
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredBookmarks.map((bookmark) => (
-            <div key={bookmark.id} className="h-[340px]">
-              <BookmarkCard 
-                bookmark={bookmark}
-                onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
-                onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
-                onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
-                onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
-                onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
-                onEditClick={openEditModal}
-              />
+        <div className="space-y-4">
+          {currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && (
+            renderSection("Favorites", <Star className="w-5 h-5" />, filteredBookmarks.filter(b => b.is_favorite))
+          )}
+          {filteredBookmarks.filter(b => !(currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && b.is_favorite)).length > 0 && (
+            <div className="mt-8">
+              {currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && filteredBookmarks.filter(b => b.is_favorite).length > 0 && (
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <BookmarkIcon className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-foreground">All Items</h3>
+                </div>
+              )}
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredBookmarks
+                  .filter(b => !(currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && b.is_favorite))
+                  .map((bookmark) => (
+                  <div key={bookmark.id} className="h-[340px]">
+                    <BookmarkCard 
+                      bookmark={bookmark}
+                      onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
+                      onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
+                      onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
+                      onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
+                      onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
+                      onEditClick={openEditModal}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
