@@ -505,6 +505,23 @@ const Dashboard = () => {
                   placeholder="e.g. productivity, reading, tech"
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary"
                 />
+                <div className="mt-2 flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar">
+                  {Array.from(new Set(bookmarks.flatMap(b => b.tags?.filter(t => !t.is_ai_generated).map(t => t.name) || []))).sort().map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        const currentTags = editTags.split(',').map(t => t.trim()).filter(Boolean);
+                        if (!currentTags.includes(tag)) {
+                          setEditTags(currentTags.length > 0 ? `${currentTags.join(', ')}, ${tag}` : tag);
+                        }
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium bg-secondary/60 hover:bg-primary/10 text-foreground-secondary hover:text-primary rounded-md transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex gap-3 justify-end mt-6">
                 <button
