@@ -327,7 +327,6 @@ const Dashboard = () => {
         <div className="space-y-8">
           <div className="space-y-4">
             {renderSection("Continue Reading", <BookOpen className="w-5 h-5" />, activeBookmarks.filter(b => b.status === 'reading' || b.status === 'unread').slice(0, 8))}
-            {renderSection("Recently Saved", <Clock className="w-5 h-5" />, [...activeBookmarks].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 8))}
             {renderSection("Favorites", <Star className="w-5 h-5" />, activeBookmarks.filter(b => b.is_favorite))}
           </div>
 
