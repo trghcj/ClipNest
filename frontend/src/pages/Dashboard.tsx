@@ -331,12 +331,12 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && (
+          {currentCollectionId && !aiQuery && searchParams.get('view') !== 'archive' && !searchParams.get('tag') && (
             renderSection("Favorites", <Star className="w-5 h-5" />, filteredBookmarks.filter(b => b.is_favorite))
           )}
-          {filteredBookmarks.filter(b => !(currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && b.is_favorite)).length > 0 && (
+          {filteredBookmarks.filter(b => !(currentCollectionId && !aiQuery && searchParams.get('view') !== 'archive' && !searchParams.get('tag') && b.is_favorite)).length > 0 && (
             <div className="mt-8">
-              {currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && filteredBookmarks.filter(b => b.is_favorite).length > 0 && (
+              {currentCollectionId && !aiQuery && searchParams.get('view') !== 'archive' && !searchParams.get('tag') && filteredBookmarks.filter(b => b.is_favorite).length > 0 && (
                 <div className="flex items-center gap-2 mb-6">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                     <BookmarkIcon className="w-4 h-4" />
@@ -346,7 +346,7 @@ const Dashboard = () => {
               )}
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredBookmarks
-                  .filter(b => !(currentCollectionId && !aiQuery && !isArchiveView && !searchParams.get('tag') && b.is_favorite))
+                  .filter(b => !(currentCollectionId && !aiQuery && searchParams.get('view') !== 'archive' && !searchParams.get('tag') && b.is_favorite))
                   .map((bookmark) => (
                   <div key={bookmark.id} className="h-[340px]">
                     <BookmarkCard 
