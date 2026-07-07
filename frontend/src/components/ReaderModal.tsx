@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, FileText, Save, Loader2 } from 'lucide-react';
+import { X, BookOpen, Save, Loader2 } from 'lucide-react';
 import type { Bookmark } from '../services/bookmarks';
 import { getNote, upsertNote } from '../services/notes';
 

@@ -93,7 +93,7 @@ const Dashboard = () => {
 
   const addBookmarkMutation = useMutation({
     mutationFn: createBookmark,
-    onSuccess: async (data) => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
     },
   });
