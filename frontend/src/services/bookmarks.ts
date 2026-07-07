@@ -34,7 +34,11 @@ export const uploadPdfBookmark = async (file: File): Promise<Bookmark> => {
   const formData = new FormData();
   formData.append('file', file);
   
-  const response = await apiClient.post('bookmarks/pdf', formData);
+  const response = await apiClient.post('bookmarks/pdf', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 
