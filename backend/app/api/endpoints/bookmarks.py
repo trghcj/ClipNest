@@ -12,6 +12,7 @@ from ...schemas.note import NoteCreate, NoteUpdate, NoteResponse
 from ...services.metadata_extractor import extract_metadata
 from ...services.background_tasks import process_bookmark_ai
 from ...services.ai_service import perform_semantic_search
+from ...services.activity_service import log_activity
 from ...core.auth import get_current_user
 
 router = APIRouter()
@@ -44,6 +45,8 @@ async def create_bookmark(bookmark: BookmarkCreate, background_tasks: Background
     # Spawn AI tagging and summarization in background
     background_tasks.add_task(process_bookmark_ai, db_bookmark.id, db_bookmark.url, db_bookmark.title or "", db_bookmark.description or "", db_bookmark.content)
     
+    log_activity(db, current_user, "saved", db_bookmark.id)
+    await db.commit() # commit the activity
     return db_bookmark
 
 @router.get("/", response_model=List[BookmarkResponse])
@@ -84,6 +87,7 @@ async def delete_bookmark(bookmark_id: str, db: Session = Depends(get_db), curre
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
         
+    log_activity(db, current_user, "deleted", bookmark.id)
     await db.delete(bookmark)
     await db.commit()
     return {"ok": True}
@@ -121,6 +125,11 @@ async def update_bookmark(bookmark_id: str, bookmark_update: BookmarkUpdate, db:
                     db.add(tag)
                 bookmark.tags.append(tag)
             
+    if 'is_favorite' in update_data:
+        log_activity(db, current_user, "favorited" if update_data['is_favorite'] else "unfavorited", bookmark.id)
+    if 'is_archived' in update_data:
+        log_activity(db, current_user, "archived" if update_data['is_archived'] else "unarchived", bookmark.id)
+        
     await db.commit()
     await db.refresh(bookmark)
     return bookmark
