@@ -5,7 +5,7 @@ from .tag import TagResponse
 from .note import NoteResponse
 
 class BookmarkBase(BaseModel):
-    url: HttpUrl
+    url: str
     title: Optional[str] = None
     description: Optional[str] = None
     thumbnail_url: Optional[str] = None
@@ -20,7 +20,7 @@ class BookmarkCreate(BookmarkBase):
     pass
 
 class BookmarkUpdate(BookmarkBase):
-    url: Optional[HttpUrl] = None
+    url: Optional[str] = None
     tags: Optional[List[str]] = None
 
 class BookmarkResponse(BookmarkBase):
@@ -37,7 +37,7 @@ class BookmarkResponse(BookmarkBase):
         from_attributes = True
 
 class URLMetadataRequest(BaseModel):
-    url: HttpUrl
+    url: str
 
 class URLMetadataResponse(BaseModel):
     title: str

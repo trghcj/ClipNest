@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { auth } from './firebase';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1/';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1/';
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -19,7 +19,13 @@ apiClient.interceptors.request.use(async (config) => {
   }
   // Remove Content-Type for FormData so browser can set boundary
   if (config.data instanceof FormData) {
-    delete config.headers['Content-Type'];
+    if (config.headers && typeof config.headers.delete === 'function') {
+      config.headers.delete('Content-Type');
+      config.headers.delete('content-type');
+    } else {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    }
   }
   return config;
 });

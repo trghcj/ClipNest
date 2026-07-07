@@ -1,4 +1,5 @@
-import apiClient from './api';
+import apiClient, { API_URL } from './api';
+import { auth } from './firebase';
 
 export interface Bookmark {
   id: string;
@@ -34,8 +35,21 @@ export const uploadPdfBookmark = async (file: File): Promise<Bookmark> => {
   const formData = new FormData();
   formData.append('file', file);
   
-  const response = await apiClient.post('bookmarks/pdf', formData);
-  return response.data;
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+  const response = await fetch(`${API_URL}bookmarks/pdf`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+      // Note: intentionally omitting Content-Type so browser sets boundary
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload PDF');
+  }
+
+  return response.json();
 };
 
 export const extractMetadata = async (url: string) => {
