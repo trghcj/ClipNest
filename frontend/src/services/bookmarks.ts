@@ -21,12 +21,12 @@ export interface Bookmark {
 }
 
 export const getBookmarks = async (): Promise<Bookmark[]> => {
-  const response = await apiClient.get('bookmarks/');
+  const response = await apiClient.get('bookmarks');
   return response.data;
 };
 
 export const createBookmark = async (bookmark: Partial<Bookmark>): Promise<Bookmark> => {
-  const response = await apiClient.post('bookmarks/', bookmark);
+  const response = await apiClient.post('bookmarks', bookmark);
   return response.data;
 };
 
@@ -34,11 +34,7 @@ export const uploadPdfBookmark = async (file: File): Promise<Bookmark> => {
   const formData = new FormData();
   formData.append('file', file);
   
-  const response = await apiClient.post('bookmarks/pdf', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  const response = await apiClient.post('bookmarks/pdf', formData);
   return response.data;
 };
 
