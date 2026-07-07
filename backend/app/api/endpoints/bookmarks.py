@@ -26,7 +26,7 @@ async def get_metadata(request: URLMetadataRequest, current_user: str = Depends(
     data = await extract_metadata(url_str)
     return data
 
-@router.post("/", response_model=BookmarkResponse)
+@router.post("", response_model=BookmarkResponse)
 async def create_bookmark(bookmark: BookmarkCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
     db_bookmark = Bookmark(
         user_id=current_user,
@@ -83,7 +83,7 @@ async def upload_pdf_bookmark(background_tasks: BackgroundTasks, file: UploadFil
     await db.commit()
     return db_bookmark
 
-@router.get("/", response_model=List[BookmarkResponse])
+@router.get("", response_model=List[BookmarkResponse])
 async def read_bookmarks(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
     stmt = select(Bookmark).where(Bookmark.user_id == current_user).offset(skip).limit(limit)
     result = await db.execute(stmt)
