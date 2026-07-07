@@ -137,5 +137,27 @@ npm run dev
 
 ---
 
+## 🌍 Deployment
+
+ClipNest is designed to be easily deployable on modern cloud platforms with minimal cost.
+
+### Frontend (Vercel)
+The React/Vite frontend is optimized for deployment on Vercel:
+1. Connect your GitHub repository to Vercel.
+2. Select the `frontend` directory as your Root Directory.
+3. Vercel will automatically detect Vite.
+4. Add all your `VITE_FIREBASE_*` and `VITE_API_URL` environment variables.
+5. Deploy!
+
+### Backend (Render / Railway)
+The FastAPI backend can be hosted on Render or Railway:
+1. Connect your GitHub repository.
+2. Set the Root Directory to `backend`.
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Add your `DATABASE_URL`, `FIREBASE_CREDENTIALS`, and `GEMINI_API_KEY` environment variables.
+
+---
+
 ## 🛡️ License
 This project is proprietary and confidential.
