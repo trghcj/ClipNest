@@ -2,6 +2,7 @@ from pydantic import BaseModel, HttpUrl
 from typing import Optional, List
 from datetime import datetime
 from .tag import TagResponse
+from .note import NoteResponse
 
 class BookmarkBase(BaseModel):
     url: HttpUrl
@@ -30,6 +31,7 @@ class BookmarkResponse(BookmarkBase):
     summary: Optional[str] = None
     content: Optional[str] = None
     tags: List[TagResponse] = []
+    note: Optional[NoteResponse] = None
 
     class Config:
         from_attributes = True

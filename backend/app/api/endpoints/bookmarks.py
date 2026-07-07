@@ -6,7 +6,9 @@ from typing import List
 from ...core.database import get_db
 from ...models.bookmark import Bookmark
 from ...models.tag import Tag
+from ...models.note import Note
 from ...schemas.bookmark import BookmarkCreate, BookmarkUpdate, BookmarkResponse, URLMetadataRequest, URLMetadataResponse, AISearchRequest, AISearchResponse
+from ...schemas.note import NoteCreate, NoteUpdate, NoteResponse
 from ...services.metadata_extractor import extract_metadata
 from ...services.background_tasks import process_bookmark_ai
 from ...services.ai_service import perform_semantic_search
@@ -123,3 +125,36 @@ async def update_bookmark(bookmark_id: str, bookmark_update: BookmarkUpdate, db:
     await db.refresh(bookmark)
     return bookmark
 
+@router.get("/{bookmark_id}/note", response_model=NoteResponse)
+async def get_note(bookmark_id: str, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
+    result = await db.execute(stmt)
+    bookmark = result.scalar_one_or_none()
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+        
+    if not bookmark.note:
+        raise HTTPException(status_code=404, detail="Note not found")
+        
+    return bookmark.note
+
+@router.put("/{bookmark_id}/note", response_model=NoteResponse)
+async def upsert_note(bookmark_id: str, note_data: NoteUpdate, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
+    result = await db.execute(stmt)
+    bookmark = result.scalar_one_or_none()
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+        
+    if bookmark.note:
+        bookmark.note.content = note_data.content
+    else:
+        new_note = Note(bookmark_id=bookmark.id, content=note_data.content)
+        db.add(new_note)
+        bookmark.note = new_note
+        
+    await db.commit()
+    # Need to refresh the note to get updated_at/created_at
+    if bookmark.note:
+        await db.refresh(bookmark.note)
+    return bookmark.note
