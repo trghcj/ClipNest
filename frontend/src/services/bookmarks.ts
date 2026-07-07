@@ -1,5 +1,5 @@
 import apiClient, { API_URL } from './api';
-import { auth } from '../config/firebase';
+import { auth } from './firebase';
 
 export interface Bookmark {
   id: string;
