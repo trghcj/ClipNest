@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark } from '../services/bookmarks';
+import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark, uploadPdfBookmark } from '../services/bookmarks';
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import type { Bookmark } from '../services/bookmarks';
 import { Bookmark as BookmarkIcon, Plus, Loader2, Sparkles, BookOpen, Clock, Folder, Tag as TagIcon, TrendingUp, Star, Archive } from 'lucide-react';
@@ -23,6 +23,8 @@ const Dashboard = () => {
   const [newUrl, setNewUrl] = useState(() => searchParams.get('saveUrl') || '');
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [addMode, setAddMode] = useState<'url' | 'pdf'>('url');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const [readerBookmark, setReaderBookmark] = useState<Bookmark | null>(null);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
@@ -92,24 +94,7 @@ const Dashboard = () => {
   const addBookmarkMutation = useMutation({
     mutationFn: createBookmark,
     onSuccess: async (data) => {
-      if (selectedCollectionId) {
-        try {
-          await addBookmarkToCollection(selectedCollectionId, data.id);
-        } catch (error) {
-          console.error("Failed to add to collection", error);
-        }
-      }
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-      setIsModalOpen(false);
-      setNewUrl('');
-      setSelectedCollectionId('');
-      setIsExtracting(false);
-      
-      if (searchParams.has('saveUrl')) {
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete('saveUrl');
-        window.history.replaceState({}, '', `${window.location.pathname}?${newParams.toString()}`);
-      }
     },
   });
 
@@ -129,21 +114,53 @@ const Dashboard = () => {
 
   const handleAddBookmark = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUrl) return;
-
+    if (addMode === 'url' && !newUrl) return;
+    if (addMode === 'pdf' && !pdfFile) return;
+    
     setIsExtracting(true);
     try {
-      const metadata = await extractMetadata(newUrl);
-      await addBookmarkMutation.mutateAsync({
-        url: newUrl,
-        title: metadata.title,
-        description: metadata.description,
-        thumbnail_url: metadata.image_url,
-        favicon_url: metadata.favicon_url,
-        content: metadata.content,
-      });
+      if (addMode === 'pdf' && pdfFile) {
+        const data = await uploadPdfBookmark(pdfFile);
+        if (selectedCollectionId) {
+          try {
+            await addBookmarkToCollection(selectedCollectionId, data.id);
+          } catch (error) {
+            console.error("Failed to add to collection", error);
+          }
+        }
+      } else {
+        const metadata = await extractMetadata(newUrl);
+        const data = await addBookmarkMutation.mutateAsync({
+          url: newUrl,
+          title: metadata.title,
+          description: metadata.description,
+          thumbnail_url: metadata.image_url,
+          favicon_url: metadata.favicon_url,
+          content: metadata.content
+        });
+        if (selectedCollectionId) {
+          try {
+            await addBookmarkToCollection(selectedCollectionId, data.id);
+          } catch (error) {
+            console.error("Failed to add to collection", error);
+          }
+        }
+      }
+      setIsModalOpen(false);
+      setNewUrl('');
+      setPdfFile(null);
+      setSelectedCollectionId('');
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+      
+      if (searchParams.has('saveUrl')) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('saveUrl');
+        window.history.replaceState({}, '', `${window.location.pathname}?${newParams.toString()}`);
+      }
     } catch (error) {
       console.error("Failed to add bookmark", error);
+      alert("Failed to save. Please try again.");
+    } finally {
       setIsExtracting(false);
     }
   };
@@ -405,21 +422,42 @@ const Dashboard = () => {
               <h3 className="text-xl font-display font-bold text-foreground">Save to Library</h3>
             </div>
             <form onSubmit={handleAddBookmark} className="p-6">
+              <div className="flex gap-2 mb-6 p-1 bg-secondary rounded-lg">
+                <button type="button" onClick={() => setAddMode('url')} className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${addMode === 'url' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'}`}>URL Link</button>
+                <button type="button" onClick={() => setAddMode('pdf')} className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${addMode === 'pdf' ? 'bg-card shadow text-foreground' : 'text-muted-foreground'}`}>Upload PDF</button>
+              </div>
+              
               <div className="space-y-5">
-                <div>
-                  <label htmlFor="url" className="block text-sm font-semibold text-foreground mb-1.5">
-                    URL Link
-                  </label>
-                  <input
-                    id="url"
-                    type="url"
-                    required
-                    placeholder="https://example.com/article"
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 shadow-sm transition-all"
-                  />
-                </div>
+                {addMode === 'url' ? (
+                  <div>
+                    <label htmlFor="url" className="block text-sm font-semibold text-foreground mb-1.5">
+                      URL Link
+                    </label>
+                    <input
+                      id="url"
+                      type="url"
+                      required
+                      placeholder="https://example.com/article"
+                      value={newUrl}
+                      onChange={(e) => setNewUrl(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 shadow-sm transition-all"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="pdf" className="block text-sm font-semibold text-foreground mb-1.5">
+                      PDF File
+                    </label>
+                    <input
+                      id="pdf"
+                      type="file"
+                      accept="application/pdf"
+                      required
+                      onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2 text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all cursor-pointer"
+                    />
+                  </div>
+                )}
                 {collections.length > 0 && (
                   <div>
                     <label htmlFor="collection" className="block text-sm font-semibold text-foreground mb-1.5">
@@ -449,7 +487,7 @@ const Dashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isExtracting || !newUrl}
+                  disabled={isExtracting || (addMode === 'url' ? !newUrl : !pdfFile)}
                   className="px-5 py-2.5 bg-primary text-white hover:bg-primary-hover disabled:opacity-50 transition-colors rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
                 >
                   {isExtracting ? (

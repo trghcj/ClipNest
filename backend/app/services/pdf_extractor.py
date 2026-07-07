@@ -94,3 +94,36 @@ def _fallback_metadata(url: str) -> dict:
         "favicon_url": "https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg",
         "content": ""
     }
+
+def extract_local_pdf(pdf_bytes: bytes, filename: str) -> dict:
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        title = ""
+        if reader.metadata and reader.metadata.title:
+            title = str(reader.metadata.title)
+        
+        if not title:
+            title = filename
+            
+        text_content = ""
+        num_pages = len(reader.pages)
+        pages_to_extract = min(num_pages, MAX_PAGES)
+        
+        for i in range(pages_to_extract):
+            page = reader.pages[i]
+            text = page.extract_text()
+            if text:
+                text_content += text + "\n\n"
+                
+        return {
+            "title": title.strip(),
+            "description": f"PDF Document ({num_pages} pages)",
+            "image_url": "", 
+            "favicon_url": "https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg",
+            "content": text_content.strip(),
+            "page_count": num_pages
+        }
+    except Exception as e:
+        print(f"Error extracting local PDF: {e}")
+        return _fallback_metadata(filename)
+

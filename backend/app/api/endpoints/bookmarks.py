@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
+import uuid
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import json
@@ -10,6 +11,7 @@ from ...models.note import Note
 from ...schemas.bookmark import BookmarkCreate, BookmarkUpdate, BookmarkResponse, URLMetadataRequest, URLMetadataResponse, AISearchRequest, AISearchResponse
 from ...schemas.note import NoteCreate, NoteUpdate, NoteResponse
 from ...services.metadata_extractor import extract_metadata
+from ...services.pdf_extractor import extract_local_pdf
 from ...services.background_tasks import process_bookmark_ai
 from ...services.ai_service import perform_semantic_search
 from ...services.activity_service import log_activity
@@ -47,6 +49,38 @@ async def create_bookmark(bookmark: BookmarkCreate, background_tasks: Background
     
     log_activity(db, current_user, "saved", db_bookmark.id)
     await db.commit() # commit the activity
+    return db_bookmark
+
+@router.post("/pdf", response_model=BookmarkResponse)
+async def upload_pdf_bookmark(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        
+    pdf_bytes = await file.read()
+    
+    # Extract metadata using pypdf
+    metadata = extract_local_pdf(pdf_bytes, file.filename)
+    
+    # Create bookmark based on extracted data
+    db_bookmark = Bookmark(
+        user_id=current_user,
+        url=f"local://{uuid.uuid4()}/{file.filename}", # Fake URL for local file
+        title=metadata.get("title", file.filename),
+        description=metadata.get("description", "Uploaded PDF Document"),
+        favicon_url=metadata.get("favicon_url", ""),
+        content=metadata.get("content", ""),
+        is_favorite=False,
+        is_archived=False
+    )
+    db.add(db_bookmark)
+    await db.commit()
+    await db.refresh(db_bookmark)
+    
+    # Spawn AI tagging and summarization in background
+    background_tasks.add_task(process_bookmark_ai, db_bookmark.id, db_bookmark.url, db_bookmark.title or "", db_bookmark.description or "", db_bookmark.content)
+    
+    log_activity(db, current_user, "saved_pdf", db_bookmark.id)
+    await db.commit()
     return db_bookmark
 
 @router.get("/", response_model=List[BookmarkResponse])

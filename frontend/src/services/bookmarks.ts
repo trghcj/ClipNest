@@ -30,6 +30,18 @@ export const createBookmark = async (bookmark: Partial<Bookmark>): Promise<Bookm
   return response.data;
 };
 
+export const uploadPdfBookmark = async (file: File): Promise<Bookmark> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await apiClient.post('bookmarks/pdf', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 export const extractMetadata = async (url: string) => {
   const response = await apiClient.post('bookmarks/extract-metadata', { url });
   return response.data;

@@ -18,6 +18,9 @@ ClipNest is not just another bookmarking app. It is a smart digital library that
 
 ## 🚀 Core Features
 - **Chrome Extension Integration**: Save bookmarks instantly from any tab with a single click.
+- **Knowledge Base Notes**: Attach rich markdown-supported notes directly to any bookmark to build your personal knowledge graph.
+- **Activity Timeline**: Track your digital habits with a chronological timeline of your recent saves, favorites, and actions.
+- **Local PDF Uploads**: Drag and drop local PDFs to extract text and generate AI summaries without needing a public URL.
 - **Automatic Metadata Extraction**: Automatically scrapes and extracts titles, descriptions, cover images, and favicons from URLs.
 - **Collections & Folders**: Organize bookmarks into custom nested collections with inline renaming.
 - **User Profiles**: Secure authentication via Firebase with customizable profile pictures.
