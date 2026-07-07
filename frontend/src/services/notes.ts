@@ -10,7 +10,7 @@ export interface Note {
 
 export const getNote = async (bookmarkId: string): Promise<Note | null> => {
   try {
-    const response = await apiClient.get<Note>(`/bookmarks/${bookmarkId}/note`);
+    const response = await apiClient.get<Note>(`bookmarks/${bookmarkId}/note`);
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 404) {
@@ -21,6 +21,6 @@ export const getNote = async (bookmarkId: string): Promise<Note | null> => {
 };
 
 export const upsertNote = async (bookmarkId: string, content: string): Promise<Note> => {
-  const response = await apiClient.put<Note>(`/bookmarks/${bookmarkId}/note`, { content });
+  const response = await apiClient.put<Note>(`bookmarks/${bookmarkId}/note`, { content });
   return response.data;
 };
