@@ -24,3 +24,4 @@ class Bookmark(Base):
     content = Column(String) # Extracted text
     
     tags = relationship("Tag", secondary="clipnest_bookmark_tags", lazy="selectin")
+    note = relationship("Note", uselist=False, backref="bookmark", cascade="all, delete-orphan", lazy="selectin")

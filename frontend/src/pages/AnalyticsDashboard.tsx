@@ -1,6 +1,8 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../services/api';
+import { getActivities } from '../services/activity';
+import { formatDistanceToNow } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Activity, BookOpen, Clock, Tag as TagIcon, Loader2 } from 'lucide-react';
 
@@ -19,6 +21,11 @@ export const AnalyticsDashboard: React.FC = () => {
       const res = await apiClient.get('analytics/');
       return res.data as AnalyticsData;
     }
+  });
+
+  const { data: activitiesData, isLoading: isLoadingActivities } = useQuery({
+    queryKey: ['activities'],
+    queryFn: () => getActivities(10)
   });
 
   if (isLoading) {
@@ -156,6 +163,41 @@ export const AnalyticsDashboard: React.FC = () => {
             <p className="text-muted-foreground">No tags generated yet.</p>
           )}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm mb-12">
+        <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-primary" />
+          Recent Activity
+        </h3>
+        
+        {isLoadingActivities ? (
+          <div className="flex justify-center items-center py-10">
+            <Loader2 className="w-6 h-6 animate-spin text-primary opacity-50" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {activitiesData && activitiesData.length > 0 ? (
+              <div className="relative border-l border-border ml-3 space-y-6 pb-4">
+                {activitiesData.map((activity) => (
+                  <div key={activity.id} className="relative pl-6">
+                    <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-card"></div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                      <p className="text-sm text-foreground">
+                        You <span className="font-medium">{activity.action_type}</span> a bookmark
+                      </p>
+                      <time className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                      </time>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm text-center py-6">No recent activity found.</p>
+            )}
+          </div>
+        )}
       </div>
 
     </div>

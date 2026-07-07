@@ -18,6 +18,9 @@ ClipNest is not just another bookmarking app. It is a smart digital library that
 
 ## 🚀 Core Features
 - **Chrome Extension Integration**: Save bookmarks instantly from any tab with a single click.
+- **Knowledge Base Notes**: Attach rich markdown-supported notes directly to any bookmark to build your personal knowledge graph.
+- **Activity Timeline**: Track your digital habits with a chronological timeline of your recent saves, favorites, and actions.
+- **Local PDF Uploads**: Drag and drop local PDFs to extract text and generate AI summaries without needing a public URL.
 - **Automatic Metadata Extraction**: Automatically scrapes and extracts titles, descriptions, cover images, and favicons from URLs.
 - **Collections & Folders**: Organize bookmarks into custom nested collections with inline renaming.
 - **User Profiles**: Secure authentication via Firebase with customizable profile pictures.
@@ -131,6 +134,28 @@ npm run dev
 2. Enable **Developer mode** in the top right corner.
 3. Click **Load unpacked** and select the `extension` folder in this repository.
 4. Pin the ClipNest extension to your browser toolbar!
+
+---
+
+## 🌍 Deployment
+
+ClipNest is designed to be easily deployable on modern cloud platforms with minimal cost.
+
+### Frontend (Vercel)
+The React/Vite frontend is optimized for deployment on Vercel:
+1. Connect your GitHub repository to Vercel.
+2. Select the `frontend` directory as your Root Directory.
+3. Vercel will automatically detect Vite.
+4. Add all your `VITE_FIREBASE_*` and `VITE_API_URL` environment variables.
+5. Deploy!
+
+### Backend (Render / Railway)
+The FastAPI backend can be hosted on Render or Railway:
+1. Connect your GitHub repository.
+2. Set the Root Directory to `backend`.
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Add your `DATABASE_URL`, `FIREBASE_CREDENTIALS`, and `GEMINI_API_KEY` environment variables.
 
 ---
 

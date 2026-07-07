@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
+import uuid
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import json
@@ -6,10 +7,14 @@ from typing import List
 from ...core.database import get_db
 from ...models.bookmark import Bookmark
 from ...models.tag import Tag
+from ...models.note import Note
 from ...schemas.bookmark import BookmarkCreate, BookmarkUpdate, BookmarkResponse, URLMetadataRequest, URLMetadataResponse, AISearchRequest, AISearchResponse
+from ...schemas.note import NoteCreate, NoteUpdate, NoteResponse
 from ...services.metadata_extractor import extract_metadata
+from ...services.pdf_extractor import extract_local_pdf
 from ...services.background_tasks import process_bookmark_ai
 from ...services.ai_service import perform_semantic_search
+from ...services.activity_service import log_activity
 from ...core.auth import get_current_user
 
 router = APIRouter()
@@ -42,6 +47,40 @@ async def create_bookmark(bookmark: BookmarkCreate, background_tasks: Background
     # Spawn AI tagging and summarization in background
     background_tasks.add_task(process_bookmark_ai, db_bookmark.id, db_bookmark.url, db_bookmark.title or "", db_bookmark.description or "", db_bookmark.content)
     
+    log_activity(db, current_user, "saved", db_bookmark.id)
+    await db.commit() # commit the activity
+    return db_bookmark
+
+@router.post("/pdf", response_model=BookmarkResponse)
+async def upload_pdf_bookmark(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        
+    pdf_bytes = await file.read()
+    
+    # Extract metadata using pypdf
+    metadata = extract_local_pdf(pdf_bytes, file.filename)
+    
+    # Create bookmark based on extracted data
+    db_bookmark = Bookmark(
+        user_id=current_user,
+        url=f"local://{uuid.uuid4()}/{file.filename}", # Fake URL for local file
+        title=metadata.get("title", file.filename),
+        description=metadata.get("description", "Uploaded PDF Document"),
+        favicon_url=metadata.get("favicon_url", ""),
+        content=metadata.get("content", ""),
+        is_favorite=False,
+        is_archived=False
+    )
+    db.add(db_bookmark)
+    await db.commit()
+    await db.refresh(db_bookmark)
+    
+    # Spawn AI tagging and summarization in background
+    background_tasks.add_task(process_bookmark_ai, db_bookmark.id, db_bookmark.url, db_bookmark.title or "", db_bookmark.description or "", db_bookmark.content)
+    
+    log_activity(db, current_user, "saved_pdf", db_bookmark.id)
+    await db.commit()
     return db_bookmark
 
 @router.get("/", response_model=List[BookmarkResponse])
@@ -82,6 +121,7 @@ async def delete_bookmark(bookmark_id: str, db: Session = Depends(get_db), curre
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
         
+    log_activity(db, current_user, "deleted", bookmark.id)
     await db.delete(bookmark)
     await db.commit()
     return {"ok": True}
@@ -119,7 +159,45 @@ async def update_bookmark(bookmark_id: str, bookmark_update: BookmarkUpdate, db:
                     db.add(tag)
                 bookmark.tags.append(tag)
             
+    if 'is_favorite' in update_data:
+        log_activity(db, current_user, "favorited" if update_data['is_favorite'] else "unfavorited", bookmark.id)
+    if 'is_archived' in update_data:
+        log_activity(db, current_user, "archived" if update_data['is_archived'] else "unarchived", bookmark.id)
+        
     await db.commit()
     await db.refresh(bookmark)
     return bookmark
 
+@router.get("/{bookmark_id}/note", response_model=NoteResponse)
+async def get_note(bookmark_id: str, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
+    result = await db.execute(stmt)
+    bookmark = result.scalar_one_or_none()
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+        
+    if not bookmark.note:
+        raise HTTPException(status_code=404, detail="Note not found")
+        
+    return bookmark.note
+
+@router.put("/{bookmark_id}/note", response_model=NoteResponse)
+async def upsert_note(bookmark_id: str, note_data: NoteUpdate, db: Session = Depends(get_db), current_user: str = Depends(get_current_user)):
+    stmt = select(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == current_user)
+    result = await db.execute(stmt)
+    bookmark = result.scalar_one_or_none()
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+        
+    if bookmark.note:
+        bookmark.note.content = note_data.content
+    else:
+        new_note = Note(bookmark_id=bookmark.id, content=note_data.content)
+        db.add(new_note)
+        bookmark.note = new_note
+        
+    await db.commit()
+    # Need to refresh the note to get updated_at/created_at
+    if bookmark.note:
+        await db.refresh(bookmark.note)
+    return bookmark.note
