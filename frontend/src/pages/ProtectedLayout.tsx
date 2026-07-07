@@ -285,6 +285,8 @@ const ProtectedLayout = () => {
                 if (searchParams.get('view') === 'archive') {
                   newParams.delete('view');
                 } else {
+                  newParams.delete('collectionId');
+                  newParams.delete('tag');
                   newParams.set('view', 'archive');
                 }
                 navigate({ pathname: '/', search: newParams.toString() });
