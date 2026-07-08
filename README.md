@@ -19,6 +19,10 @@ ClipNest is not just another bookmarking app. It is a smart digital library that
 ## 🚀 Core Features
 - **Chrome Extension Integration**: Save bookmarks instantly from any tab with a single click.
 - **Knowledge Base Notes**: Attach rich markdown-supported notes directly to any bookmark to build your personal knowledge graph.
+  - **Tiptap WYSIWYG Editor**: A fully-featured rich text editor with formatting, lists, and code blocks.
+  - **Image Drag-and-Drop**: Drag screenshots directly into the editor for instant Cloudinary CDN hosting.
+  - **Focus Mode & Split View**: Read articles and take notes side-by-side, or expand the editor full-screen for a distraction-free writing environment.
+  - **Debounced Auto-Save**: Notes seamlessly sync to the cloud in the background as you type.
 - **Activity Timeline**: Track your digital habits with a chronological timeline of your recent saves, favorites, and actions.
 - **Local PDF Uploads**: Drag and drop local PDFs to extract text and generate AI summaries without needing a public URL.
 - **Automatic Metadata Extraction**: Automatically scrapes and extracts titles, descriptions, cover images, and favicons from URLs.
@@ -61,6 +65,7 @@ ClipNest focuses on a premium, distraction-free reading experience:
 ### Frontend
 - **Framework**: React 18 with Vite
 - **Styling**: Tailwind CSS, Framer Motion
+- **Editor**: Tiptap (Rich Text Editor)
 - **State Management**: Zustand (Global state), React Query (Server state)
 - **Routing**: React Router DOM
 - **Authentication**: Firebase Auth
@@ -121,6 +126,8 @@ VITE_FIREBASE_PROJECT_ID=your_project_id
 VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
+VITE_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+VITE_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset
 VITE_API_URL=http://localhost:8000/api
 ```
 
