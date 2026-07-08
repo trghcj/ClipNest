@@ -2,6 +2,8 @@ import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image';
+import Dropcursor from '@tiptap/extension-dropcursor';
 import {
   Bold,
   Italic,
@@ -139,9 +141,42 @@ const MenuBar = ({ editor }: { editor: any }) => {
 };
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, placeholder = "Write something amazing..." }) => {
+  const uploadImageToCloudinary = async (file: File): Promise<string | null> => {
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+    
+    if (!cloudName || !uploadPreset) {
+      console.error("Cloudinary credentials are not set in environment variables.");
+      alert("Image upload failed: Cloudinary is not configured.");
+      return null;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      return data.secure_url;
+    } catch (err) {
+      console.error("Cloudinary upload failed", err);
+      alert("Failed to upload image.");
+      return null;
+    }
+  };
+
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
+      Dropcursor,
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
@@ -154,8 +189,45 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChang
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose-base dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-blockquote:my-2 prose-ul:my-1 prose-ol:my-1 max-w-none focus:outline-none min-h-[300px] p-4 custom-scrollbar',
+        class: 'prose prose-sm sm:prose-base dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-blockquote:my-2 prose-ul:my-1 prose-ol:my-1 prose-img:rounded-lg max-w-none focus:outline-none min-h-[300px] p-4 custom-scrollbar',
       },
+      handleDrop: function(view, event, _slice, moved) {
+        if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+          let file = event.dataTransfer.files[0];
+          if (file.type.startsWith('image/')) {
+            uploadImageToCloudinary(file).then(url => {
+              if (url) {
+                const { schema } = view.state;
+                const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+                const node = schema.nodes.image.create({ src: url });
+                if (coordinates) {
+                  const tr = view.state.tr.insert(coordinates.pos, node);
+                  view.dispatch(tr);
+                }
+              }
+            });
+            return true;
+          }
+        }
+        return false;
+      },
+      handlePaste: function(view, event, _slice) {
+        if (event.clipboardData && event.clipboardData.files && event.clipboardData.files[0]) {
+          let file = event.clipboardData.files[0];
+          if (file.type.startsWith('image/')) {
+            uploadImageToCloudinary(file).then(url => {
+              if (url) {
+                const { schema } = view.state;
+                const node = schema.nodes.image.create({ src: url });
+                const tr = view.state.tr.replaceSelectionWith(node);
+                view.dispatch(tr);
+              }
+            });
+            return true;
+          }
+        }
+        return false;
+      }
     },
   });
 
