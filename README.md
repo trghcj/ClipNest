@@ -20,6 +20,7 @@ ClipNest is not just another bookmarking app. It is a smart digital library that
 - **Chrome Extension Integration**: Save bookmarks instantly from any tab with a single click.
 - **Knowledge Base Notes**: Attach rich markdown-supported notes directly to any bookmark to build your personal knowledge graph.
   - **Tiptap WYSIWYG Editor**: A fully-featured rich text editor with formatting, lists, and code blocks.
+  - **Bi-directional Linking (@ Mentions)**: Type `@` to instantly search and link to your other saved bookmarks, turning your notes into an interconnected personal Wiki.
   - **Image Drag-and-Drop**: Drag screenshots directly into the editor for instant Cloudinary CDN hosting.
   - **Focus Mode & Split View**: Read articles and take notes side-by-side, or expand the editor full-screen for a distraction-free writing environment.
   - **Debounced Auto-Save**: Notes seamlessly sync to the cloud in the background as you type.
