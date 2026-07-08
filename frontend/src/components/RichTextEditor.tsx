@@ -191,7 +191,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChang
       attributes: {
         class: 'prose prose-sm sm:prose-base dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-blockquote:my-2 prose-ul:my-1 prose-ol:my-1 prose-img:rounded-lg max-w-none focus:outline-none min-h-[300px] p-4 custom-scrollbar',
       },
-      handleDrop: function(view, event, slice, moved) {
+      handleDrop: function(view, event, _slice, moved) {
         if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
           let file = event.dataTransfer.files[0];
           if (file.type.startsWith('image/')) {
@@ -211,7 +211,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChang
         }
         return false;
       },
-      handlePaste: function(view, event, slice) {
+      handlePaste: function(view, event, _slice) {
         if (event.clipboardData && event.clipboardData.files && event.clipboardData.files[0]) {
           let file = event.clipboardData.files[0];
           if (file.type.startsWith('image/')) {
