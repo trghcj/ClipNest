@@ -104,3 +104,24 @@
     @apply font-display;
   }
 }
+
+/* Tiptap Placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  color: var(--color-muted-foreground-var);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Custom Scrollbar for Note Editor */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-var);
+  border-radius: 20px;
+}

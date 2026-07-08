@@ -2,6 +2,8 @@ import React from 'react';
 import { X, BookOpen, Save, Loader2 } from 'lucide-react';
 import type { Bookmark } from '../services/bookmarks';
 import { getNote, upsertNote } from '../services/notes';
+import { RichTextEditor } from './RichTextEditor';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface ReaderModalProps {
   isOpen: boolean;
@@ -14,20 +16,37 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
   const [noteContent, setNoteContent] = React.useState('');
   const [isLoadingNote, setIsLoadingNote] = React.useState(false);
   const [isSavingNote, setIsSavingNote] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
+  const [initialNoteLoaded, setInitialNoteLoaded] = React.useState(false);
+
+  const debouncedNoteContent = useDebounce(noteContent, 1000);
 
   React.useEffect(() => {
     if (isOpen && bookmark && activeTab === 'notes') {
       loadNote();
+    } else {
+      setInitialNoteLoaded(false);
+      setSaveStatus('idle');
     }
   }, [isOpen, bookmark, activeTab]);
+
+  React.useEffect(() => {
+    if (initialNoteLoaded && bookmark) {
+      handleAutoSave(debouncedNoteContent);
+    }
+  }, [debouncedNoteContent]);
 
   const loadNote = async () => {
     if (!bookmark) return;
     setIsLoadingNote(true);
+    setInitialNoteLoaded(false);
     try {
       const note = await getNote(bookmark.id);
       if (note) setNoteContent(note.content);
       else setNoteContent('');
+      
+      // Allow a small delay before enabling auto-save to prevent saving on initial load
+      setTimeout(() => setInitialNoteLoaded(true), 500);
     } catch (error) {
       console.error('Failed to load note', error);
     } finally {
@@ -35,16 +54,22 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
     }
   };
 
-  const handleSaveNote = async () => {
+  const handleAutoSave = async (content: string) => {
     if (!bookmark) return;
-    setIsSavingNote(true);
+    setSaveStatus('saving');
     try {
-      await upsertNote(bookmark.id, noteContent);
+      await upsertNote(bookmark.id, content);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Failed to save note', error);
-    } finally {
-      setIsSavingNote(false);
+      setSaveStatus('idle');
     }
+  };
+
+  const handleNoteChange = (content: string) => {
+    setNoteContent(content);
+    setSaveStatus('saving'); // Show saving immediately when typing starts
   };
 
   if (!isOpen || !bookmark) return null;
@@ -111,24 +136,25 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
                   <Loader2 className="w-8 h-8 animate-spin text-primary opacity-50" />
                 </div>
               ) : (
-                <>
-                  <textarea
-                    value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
-                    placeholder="Write your notes here... (Markdown supported in future updates)"
-                    className="flex-1 w-full p-4 bg-muted/20 border border-border rounded-xl resize-none focus:outline-none focus:border-primary/50 text-foreground custom-scrollbar"
+                <div className="flex flex-col h-full space-y-4">
+                  <RichTextEditor 
+                    content={noteContent}
+                    onChange={handleNoteChange}
+                    placeholder="Write your notes here... (Auto-saves as you type)"
                   />
-                  <div className="flex justify-end mt-4">
-                    <button
-                      onClick={handleSaveNote}
-                      disabled={isSavingNote}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-semibold text-sm rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50"
-                    >
-                      {isSavingNote ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      Save Note
-                    </button>
+                  <div className="flex justify-end items-center h-6">
+                    {saveStatus === 'saving' && (
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
+                      </span>
+                    )}
+                    {saveStatus === 'saved' && (
+                      <span className="text-xs font-medium text-success flex items-center gap-1.5">
+                        <Save className="w-3.5 h-3.5" /> Saved to cloud
+                      </span>
+                    )}
                   </div>
-                </>
+                </div>
               )}
             </div>
           )}
