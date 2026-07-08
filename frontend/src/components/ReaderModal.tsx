@@ -15,7 +15,7 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
   const [activeTab, setActiveTab] = React.useState<'content' | 'notes'>('content');
   const [noteContent, setNoteContent] = React.useState('');
   const [isLoadingNote, setIsLoadingNote] = React.useState(false);
-  const [isSavingNote, setIsSavingNote] = React.useState(false);
+
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
   const [initialNoteLoaded, setInitialNoteLoaded] = React.useState(false);
 
