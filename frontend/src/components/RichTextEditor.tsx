@@ -4,6 +4,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Image from '@tiptap/extension-image';
 import Dropcursor from '@tiptap/extension-dropcursor';
+import Mention from '@tiptap/extension-mention';
+import { suggestion } from './mentionSuggestion';
 import {
   Bold,
   Italic,
@@ -140,6 +142,28 @@ const MenuBar = ({ editor }: { editor: any }) => {
   );
 };
 
+const CustomMention = Mention.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      url: {
+        default: null,
+        parseHTML: element => element.getAttribute('href'),
+        renderHTML: attributes => {
+          if (!attributes.url) {
+            return {}
+          }
+          return {
+            href: attributes.url,
+            target: '_blank',
+            rel: 'noopener noreferrer'
+          }
+        },
+      },
+    }
+  },
+})
+
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, placeholder = "Write something amazing..." }) => {
   const uploadImageToCloudinary = async (file: File): Promise<string | null> => {
     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -180,6 +204,24 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChang
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
+      }),
+      CustomMention.configure({
+        HTMLAttributes: {
+          class: 'mention bg-primary/20 text-primary px-1.5 py-0.5 rounded-md font-medium cursor-pointer hover:bg-primary/30 transition-colors',
+        },
+        suggestion,
+        renderHTML({ node }) {
+          return [
+            'a',
+            {
+               class: 'mention bg-primary/20 text-primary px-1.5 py-0.5 rounded-md font-medium cursor-pointer hover:bg-primary/30 transition-colors',
+               href: node.attrs.url || '#',
+               target: '_blank',
+               rel: 'noopener noreferrer'
+            },
+            `@${node.attrs.label ?? node.attrs.id}`,
+          ]
+        },
       }),
     ],
     content,
