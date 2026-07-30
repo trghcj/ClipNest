@@ -92,6 +92,16 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
         >
           Open original link
         </a>
+        {bookmark?.archive_url && (
+          <a 
+            href={bookmark.archive_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 text-muted-foreground hover:text-primary hover:underline text-sm font-medium flex items-center gap-1"
+          >
+            View Archived Snapshot
+          </a>
+        )}
       </div>
     );
   };

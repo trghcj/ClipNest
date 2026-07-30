@@ -6,7 +6,6 @@ export const ThemeToggle = () => {
 
   const cycleTheme = () => {
     if (theme === 'light') setTheme('dark');
-    else if (theme === 'dark') setTheme('system');
     else setTheme('light');
   };
 
@@ -18,7 +17,6 @@ export const ThemeToggle = () => {
     >
       {theme === 'light' && <Sun className="w-5 h-5" />}
       {theme === 'dark' && <Moon className="w-5 h-5" />}
-      {theme === 'system' && <Monitor className="w-5 h-5" />}
     </button>
   );
 };

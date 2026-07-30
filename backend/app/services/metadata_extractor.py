@@ -32,11 +32,28 @@ async def extract_metadata(url: str) -> dict:
                     response = await client.get(oembed_url)
                     response.raise_for_status()
                     data = response.json()
+                    # Extract Video ID for Transcript
+                    video_id = ""
+                    if "v=" in safe_url:
+                        video_id = safe_url.split("v=")[1].split("&")[0]
+                    elif "youtu.be/" in safe_url:
+                        video_id = safe_url.split("youtu.be/")[1].split("?")[0]
+                        
+                    transcript_text = ""
+                    if video_id:
+                        try:
+                            from youtube_transcript_api import YouTubeTranscriptApi
+                            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+                            transcript_text = " ".join([t['text'] for t in transcript_list])
+                        except Exception as e:
+                            print(f"Failed to fetch YouTube transcript: {e}")
+
                     return {
                         "title": data.get("title", ""),
                         "description": f"Video by {data.get('author_name', '')}",
                         "image_url": data.get("thumbnail_url", ""),
-                        "favicon_url": "https://www.youtube.com/favicon.ico"
+                        "favicon_url": "https://www.youtube.com/favicon.ico",
+                        "content": transcript_text
                     }
                 except Exception as e:
                     print(f"Error with YouTube oEmbed: {e}")
