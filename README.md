@@ -12,7 +12,8 @@ ClipNest is not just another bookmarking app. It is a smart digital library that
 ## ✨ AI Superpowers (Powered by Google Gemini 2.5 Flash)
 - **🤖 AI Auto-Tagging**: Forget manual organization. When you save a link, the background AI automatically reads the article and assigns highly relevant tags.
 - **📝 Smart Summarization**: Every article is automatically read and summarized into two concise sentences, allowing you to instantly recall the content without re-reading it.
-- **🎥 YouTube Transcript Summaries**: Save a YouTube video (tutorial, podcast, etc.) and ClipNest natively downloads the closed captions, feeding them to Gemini to extract a perfect summary of the video's core message.
+- **🛡️ Link Rot Protection**: ClipNest automatically triggers the Internet Archive's Wayback Machine to snapshot your saved web pages, ensuring you always have a permanent backup even if the original site goes offline.
+- **🎥 YouTube Transcript Summaries**: Save a YouTube video and ClipNest natively downloads the closed captions, feeds them to Gemini to extract a perfect summary, and beautifully embeds the video and transcript into your Reader Mode.
 - **📄 Intelligent PDF Parsing**: Save direct PDF links. ClipNest will securely download and parse the document (with smart 3MB / 10-page guardrails to ensure efficiency), extracting the raw text for AI summarization and tagging.
 - **🔍 Semantic Search ("Ask AI")**: Instead of keyword matching, click "Ask AI" to search your library using natural conversational language. The AI scans your entire bookmark database and returns exact matches along with an intelligent answer based on your saved knowledge!
 

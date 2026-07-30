@@ -44,9 +44,42 @@ async def extract_metadata(url: str) -> dict:
                         try:
                             from youtube_transcript_api import YouTubeTranscriptApi
                             transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-                            transcript_text = " ".join([t['text'] for t in transcript_list])
+                            
+                            html_content = f'''
+                            <div class="video-container mb-6 aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border bg-black">
+                                <iframe width="100%" height="100%" src="https://www.youtube.com/embed/{video_id}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                            </div>
+                            <details class="group bg-muted/30 border border-border rounded-xl p-4 mb-6 transition-all">
+                                <summary class="font-medium cursor-pointer text-foreground flex items-center justify-between">
+                                    <span class="flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+                                        View Video Transcript
+                                    </span>
+                                    <span class="text-[10px] uppercase tracking-wider font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">AI Extracted</span>
+                                </summary>
+                                <div class="mt-4 pt-4 border-t border-border/50 text-foreground-secondary leading-relaxed text-sm">
+                            '''
+                            
+                            current_p = []
+                            for t in transcript_list:
+                                current_p.append(t['text'])
+                                if len(current_p) >= 10 or t['text'].strip().endswith(('.', '?', '!')):
+                                    html_content += f"<p class='mb-3'>{' '.join(current_p)}</p>"
+                                    current_p = []
+                            
+                            if current_p:
+                                html_content += f"<p class='mb-3'>{' '.join(current_p)}</p>"
+                                
+                            html_content += "</div></details>"
+                            transcript_text = html_content
+                            
                         except Exception as e:
                             print(f"Failed to fetch YouTube transcript: {e}")
+                            transcript_text = f'''
+                            <div class="video-container mb-6 aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border bg-black">
+                                <iframe width="100%" height="100%" src="https://www.youtube.com/embed/{video_id}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                            </div>
+                            '''
 
                     return {
                         "title": data.get("title", ""),
