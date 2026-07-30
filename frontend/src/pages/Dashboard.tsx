@@ -75,7 +75,13 @@ const Dashboard = () => {
 
   const filteredBookmarks = bookmarks.filter((b) => {
     const isArchiveView = searchParams.get('view') === 'archive';
-    const matchesArchive = isArchiveView ? b.is_archived : !b.is_archived;
+    
+    let matchesArchive = true;
+    if (isArchiveView) {
+      matchesArchive = b.is_archived;
+    } else if (!currentCollectionId) {
+      matchesArchive = !b.is_archived;
+    }
 
     const matchesQuery = !searchQuery || 
       (b.title?.toLowerCase().includes(searchQuery) || false) || 

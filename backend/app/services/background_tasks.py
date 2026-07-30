@@ -5,7 +5,6 @@ from app.models.collection import Collection, CollectionBookmark
 from app.models.tag import Tag
 from app.services.ai_service import generate_bookmark_metadata
 from sqlalchemy import select, insert
-import httpx
 
 async def process_bookmark_ai(bookmark_id: str, url: str, title: str, description: str, content: str = None):
     """Background task to generate AI tags, summary, and auto-categorization."""
@@ -72,15 +71,5 @@ async def process_bookmark_ai(bookmark_id: str, url: str, title: str, descriptio
             # Avoid duplicate tags on the same bookmark
             if tag not in bookmark.tags:
                 bookmark.tags.append(tag)
-
-        # Trigger Wayback Machine Archiving
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                save_url = f"https://web.archive.org/save/{url}"
-                await client.get(save_url)
-                
-            bookmark.archive_url = f"https://web.archive.org/web/2/{url}"
-        except Exception as e:
-            print(f"Failed to archive {url} with Wayback Machine: {e}")
 
         await db.commit()
