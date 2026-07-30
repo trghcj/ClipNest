@@ -13,7 +13,6 @@ class BookmarkBase(BaseModel):
     content_type: Optional[str] = "article"
     is_favorite: Optional[bool] = False
     is_archived: Optional[bool] = False
-    archive_url: Optional[str] = None
     ai_summary: Optional[str] = None
     content: Optional[str] = None
 

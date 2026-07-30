@@ -21,7 +21,6 @@ class Bookmark(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     is_favorite = Column(Boolean, default=False)
     is_archived = Column(Boolean, default=False)
-    archive_url = Column(String) # Link to Wayback Machine snapshot
     content = Column(String) # Extracted text
     
     tags = relationship("Tag", secondary="clipnest_bookmark_tags", lazy="selectin")

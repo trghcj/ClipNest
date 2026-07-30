@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Star, Archive, Trash2, Clock, BookOpen, Highlighter, Edit2, History } from 'lucide-react';
+import { ExternalLink, Star, Archive, Trash2, Clock, BookOpen, Highlighter, Edit2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface BookmarkCardProps {
@@ -101,15 +101,6 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </button>
-          {bookmark.archive_url && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); window.open(bookmark.archive_url, '_blank'); }}
-              className="w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
-              title="View Archived Snapshot"
-            >
-              <History className="w-3.5 h-3.5" />
-            </button>
-          )}
           <button 
             onClick={(e) => { e.stopPropagation(); onClick(bookmark); }}
             className="w-7 h-7 rounded-full bg-card/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-foreground hover:text-primary transition-colors hover:scale-110 active:scale-95"
