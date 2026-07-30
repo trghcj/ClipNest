@@ -23,6 +23,7 @@ const Dashboard = () => {
   const [newUrl, setNewUrl] = useState(() => searchParams.get('saveUrl') || '');
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [showCollectionArchived, setShowCollectionArchived] = useState(false);
   const [addMode, setAddMode] = useState<'url' | 'pdf'>('url');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
@@ -79,7 +80,9 @@ const Dashboard = () => {
     let matchesArchive = true;
     if (isArchiveView) {
       matchesArchive = b.is_archived;
-    } else if (!currentCollectionId) {
+    } else if (currentCollectionId) {
+      matchesArchive = showCollectionArchived ? b.is_archived : !b.is_archived;
+    } else {
       matchesArchive = !b.is_archived;
     }
 
@@ -223,6 +226,15 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex items-center gap-3 mb-2">
+          {currentCollectionId && (
+            <button 
+              onClick={() => setShowCollectionArchived(!showCollectionArchived)}
+              className={`flex items-center gap-2 px-4 py-2.5 transition-colors rounded-lg text-sm font-semibold shadow-sm border ${showCollectionArchived ? 'bg-primary/10 text-primary border-primary/20' : 'bg-card text-foreground-secondary hover:text-foreground border-border hover:border-border/80'}`}
+            >
+              <Archive className="w-4 h-4" />
+              {showCollectionArchived ? 'View Active' : 'View Archived'}
+            </button>
+          )}
           <button 
             onClick={() => {
               setSelectedCollectionId(currentCollectionId || '');
