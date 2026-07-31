@@ -26,71 +26,94 @@ async def extract_metadata(url: str) -> dict:
         
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers=headers) as client:
             if is_youtube:
+                import urllib.parse
+                
+                # Extract Video ID for Transcript and Fallback
+                video_id = ""
+                if "v=" in safe_url:
+                    video_id = safe_url.split("v=")[1].split("&")[0]
+                elif "youtu.be/" in safe_url:
+                    video_id = safe_url.split("youtu.be/")[1].split("?")[0]
+
                 # Use oEmbed API to reliably fetch YouTube metadata without bot blocking
-                oembed_url = f"https://www.youtube.com/oembed?url={safe_url}&format=json"
+                encoded_url = urllib.parse.quote(safe_url, safe='')
+                oembed_url = f"https://www.youtube.com/oembed?url={encoded_url}&format=json"
+                
+                data = {}
                 try:
                     response = await client.get(oembed_url)
                     response.raise_for_status()
                     data = response.json()
-                    # Extract Video ID for Transcript
-                    video_id = ""
-                    if "v=" in safe_url:
-                        video_id = safe_url.split("v=")[1].split("&")[0]
-                    elif "youtu.be/" in safe_url:
-                        video_id = safe_url.split("youtu.be/")[1].split("?")[0]
-                        
-                    transcript_text = ""
-                    if video_id:
-                        try:
-                            from youtube_transcript_api import YouTubeTranscriptApi
-                            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-                            
-                            html_content = f'''
-                            <div class="video-container mb-6 aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border bg-black">
-                                <iframe width="100%" height="100%" src="https://www.youtube.com/embed/{video_id}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                            </div>
-                            <details class="group bg-muted/30 border border-border rounded-xl p-4 mb-6 transition-all">
-                                <summary class="font-medium cursor-pointer text-foreground flex items-center justify-between">
-                                    <span class="flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
-                                        View Video Transcript
-                                    </span>
-                                    <span class="text-[10px] uppercase tracking-wider font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">AI Extracted</span>
-                                </summary>
-                                <div class="mt-4 pt-4 border-t border-border/50 text-foreground-secondary leading-relaxed text-sm">
-                            '''
-                            
-                            current_p = []
-                            for t in transcript_list:
-                                current_p.append(t['text'])
-                                if len(current_p) >= 10 or t['text'].strip().endswith(('.', '?', '!')):
-                                    html_content += f"<p class='mb-3'>{' '.join(current_p)}</p>"
-                                    current_p = []
-                            
-                            if current_p:
-                                html_content += f"<p class='mb-3'>{' '.join(current_p)}</p>"
-                                
-                            html_content += "</div></details>"
-                            transcript_text = html_content
-                            
-                        except Exception as e:
-                            print(f"Failed to fetch YouTube transcript: {e}")
-                            transcript_text = f'''
-                            <div class="video-container mb-6 aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border bg-black">
-                                <iframe width="100%" height="100%" src="https://www.youtube.com/embed/{video_id}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                            </div>
-                            '''
-
-                    return {
-                        "title": data.get("title", ""),
-                        "description": f"Video by {data.get('author_name', '')}",
-                        "image_url": data.get("thumbnail_url", ""),
-                        "favicon_url": "https://www.youtube.com/favicon.ico",
-                        "content": transcript_text
-                    }
                 except Exception as e:
                     print(f"Error with YouTube oEmbed: {e}")
-                    # Fallback to standard HTTP scrape if oEmbed fails
+                    # If oEmbed fails (e.g. embedding disabled, 401 Unauthorized), we fallback manually
+                    if video_id:
+                        data = {
+                            "title": "YouTube Video",
+                            "author_name": "Unknown",
+                            "thumbnail_url": f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+                        }
+                    else:
+                        raise e  # Let it fallback to standard HTTP scrape if not a standard video URL
+                        
+                transcript_text = ""
+                if video_id:
+                    try:
+                        from youtube_transcript_api import YouTubeTranscriptApi
+                        try:
+                            # For version 0.6.x
+                            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+                        except AttributeError:
+                            # For version 1.x+
+                            transcript_list = YouTubeTranscriptApi().fetch(video_id)
+                        
+                        html_content = f'''
+                        <div class="video-container mb-6 aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border bg-black">
+                            <iframe width="100%" height="100%" src="https://www.youtube.com/embed/{video_id}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                        </div>
+                        <details class="group bg-muted/30 border border-border rounded-xl p-4 mb-6 transition-all">
+                            <summary class="font-medium cursor-pointer text-foreground flex items-center justify-between">
+                                <span class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+                                    View Video Transcript
+                                </span>
+                                <span class="text-[10px] uppercase tracking-wider font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">AI Extracted</span>
+                            </summary>
+                            <div class="mt-4 pt-4 border-t border-border/50 text-foreground-secondary leading-relaxed text-sm">
+                        '''
+                        
+                        current_p = []
+                        for t in transcript_list:
+                            # Handle both dictionary (v0.6.x) and object (v1.x)
+                            text = t['text'] if isinstance(t, dict) else getattr(t, 'text', '')
+                            if not text:
+                                continue
+                            current_p.append(text)
+                            if len(current_p) >= 10 or text.strip().endswith(('.', '?', '!')):
+                                html_content += f"<p class='mb-3'>{' '.join(current_p)}</p>"
+                                current_p = []
+                        
+                        if current_p:
+                            html_content += f"<p class='mb-3'>{' '.join(current_p)}</p>"
+                            
+                        html_content += "</div></details>"
+                        transcript_text = html_content
+                        
+                    except Exception as e:
+                        print(f"Failed to fetch YouTube transcript: {e}")
+                        transcript_text = f'''
+                        <div class="video-container mb-6 aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border bg-black">
+                            <iframe width="100%" height="100%" src="https://www.youtube.com/embed/{video_id}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                        </div>
+                        '''
+
+                return {
+                    "title": data.get("title", ""),
+                    "description": f"Video by {data.get('author_name', '')}" if data.get("author_name") else "YouTube Video",
+                    "image_url": data.get("thumbnail_url", ""),
+                    "favicon_url": "https://www.youtube.com/favicon.ico",
+                    "content": transcript_text
+                }
             
             response = await client.get(safe_url)
             response.raise_for_status()
