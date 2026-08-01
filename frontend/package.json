@@ -22,7 +22,7 @@
     "@tiptap/suggestion": "^3.28.0",
     "axios": "^1.18.1",
     "clsx": "^2.1.1",
-    "cookie": "^0.7.0",
+    "cookie": "^2.0.1",
     "date-fns": "^4.4.0",
     "firebase": "^12.16.0",
     "framer-motion": "^12.42.2",
