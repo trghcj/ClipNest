@@ -11,7 +11,7 @@ chardet==7.4.3
 charset-normalizer==3.4.7
 click==8.4.2
 colorama==0.4.6
-cryptography==49.0.0
+cryptography==50.0.0
 cssselect==1.4.0
 defusedxml==0.7.1
 deprecation==2.1.0
