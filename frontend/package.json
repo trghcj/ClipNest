@@ -20,7 +20,7 @@
     "@tiptap/react": "^3.27.3",
     "@tiptap/starter-kit": "^3.27.3",
     "@tiptap/suggestion": "^3.28.0",
-    "axios": "^1.18.1",
+    "axios": "^1.20.0",
     "clsx": "^2.1.1",
     "cookie": "^2.0.1",
     "date-fns": "^4.4.0",
