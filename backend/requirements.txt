@@ -42,7 +42,7 @@ lxml_html_clean==0.4.5
 Mako==1.4.3
 MarkupSafe==3.0.3
 msgpack==1.2.4
-multidict==6.7.1
+multidict==6.9.1
 packaging==26.2
 postgrest==2.31.0
 propcache==0.5.2
@@ -60,7 +60,7 @@ readability-lxml==0.8.4.1
 realtime==2.31.0
 requests==2.34.2
 sniffio==1.3.1
-soupsieve==2.8.4
+soupsieve==2.9
 SQLAlchemy==2.0.51
 starlette==1.3.1
 storage3==2.31.0
