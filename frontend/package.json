@@ -26,7 +26,7 @@
     "date-fns": "^4.4.0",
     "firebase": "^12.16.0",
     "framer-motion": "^12.42.2",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.46.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-is": "^19.2.8",
