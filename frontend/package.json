@@ -16,7 +16,7 @@
     "@tiptap/extension-dropcursor": "^3.29.0",
     "@tiptap/extension-image": "^3.31.3",
     "@tiptap/extension-mention": "^3.27.3",
-    "@tiptap/extension-placeholder": "^3.27.3",
+    "@tiptap/extension-placeholder": "^3.31.3",
     "@tiptap/react": "^3.27.3",
     "@tiptap/starter-kit": "^3.27.3",
     "@tiptap/suggestion": "^3.28.0",
@@ -26,9 +26,9 @@
     "date-fns": "^4.4.0",
     "firebase": "^12.16.0",
     "framer-motion": "^12.42.2",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.46.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react-dom": "^19.3.1",
     "react-is": "^19.2.8",
     "react-router": "8.3.0",
     "react-router-dom": "7.18.2",
@@ -36,20 +36,30 @@
     "set-cookie-parser": "^3.1.2",
     "tailwind-merge": "^3.6.0",
     "tippy.js": "^6.3.7",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "@tiptap/extensions": "^3.33.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.3",
-    "oxlint": "^1.74.0",
+    "oxlint": "^1.83.0",
     "tailwindcss": "^4.3.2",
     "typescript": "~7.0.2",
-    "vite": "^8.1.5",
+    "vite": "^8.3.6",
     "vite-plugin-pwa": "^1.3.0"
   },
   "overrides": {
-    "postcss": "^8.4.33"
+    "postcss": "^8.4.33",
+    "@grpc/grpc-js": "^1.14.7",
+    "source-map-js": "^1.2.2",
+    "follow-redirects": "^1.16.2",
+    "nanoid": "^3.3.18",
+    "serialize-javascript": "^7.1.3",
+    "fast-uri": "^4.2.3",
+    "minimatch": "^11.0.5",
+    "browserslist": "^4.29.5",
+    "baseline-browser-mapping": "^2.11.35"
   }
 }
