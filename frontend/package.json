@@ -16,7 +16,7 @@
     "@tiptap/extension-dropcursor": "^3.33.0",
     "@tiptap/extension-image": "^3.33.0",
     "@tiptap/extension-mention": "^3.33.0",
-    "@tiptap/extension-placeholder": "^3.33.0",
+    "@tiptap/extension-placeholder": "^3.33.1",
     "@tiptap/react": "^3.33.0",
     "@tiptap/starter-kit": "^3.33.0",
     "@tiptap/suggestion": "^3.33.0",
