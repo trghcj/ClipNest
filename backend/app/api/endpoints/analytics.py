@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, desc, text, cast, Date
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
 from app.core.database import get_db
@@ -26,13 +26,15 @@ async def get_analytics(db: Session = Depends(get_db), current_user: str = Depen
     result_total = await db.execute(stmt_total)
     total = result_total.scalar() or 0
 
-    stmt_unread = select(func.count(Bookmark.id)).where(Bookmark.user_id == current_user, Bookmark.is_archived == False)
-    result_unread = await db.execute(stmt_unread)
-    unread = result_unread.scalar() or 0
-    read = total - unread
+    # "Read" means the user marked it completed (archiving is a separate concept).
+    stmt_read = select(func.count(Bookmark.id)).where(Bookmark.user_id == current_user, Bookmark.status == "completed")
+    result_read = await db.execute(stmt_read)
+    read = result_read.scalar() or 0
+    unread = total - read
 
-    # 2. Bookmarks added per day for the last 30 days
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    # 2. Bookmarks added per day for the last 30 days, including today (UTC)
+    today = datetime.now(timezone.utc).date()
+    thirty_days_ago = datetime.combine(today - timedelta(days=29), datetime.min.time(), tzinfo=timezone.utc)
     
     # We will use SQLAlchemy to group by date
     stmt_history = select(

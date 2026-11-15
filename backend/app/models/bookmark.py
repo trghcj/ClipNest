@@ -1,5 +1,5 @@
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Index, func as sa_func
+from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -22,6 +22,14 @@ class Bookmark(Base):
     is_favorite = Column(Boolean, default=False)
     is_archived = Column(Boolean, default=False)
     content = Column(String) # Extracted text
+    # Size of `content`, computed in SQL so list endpoints can estimate reading time
+    # without sending the full content (octet_length avoids de-toasting large values).
+    content_length = column_property(sa_func.coalesce(sa_func.octet_length(content), 0))
     
     tags = relationship("Tag", secondary="clipnest_bookmark_tags", lazy="selectin")
     note = relationship("Note", uselist=False, backref="bookmark", cascade="all, delete-orphan", lazy="selectin")
+
+    __table_args__ = (
+        Index("ix_clipnest_bookmarks_user_created", "user_id", "created_at"),
+        Index("ix_clipnest_bookmarks_user_url", "user_id", "url"),
+    )
