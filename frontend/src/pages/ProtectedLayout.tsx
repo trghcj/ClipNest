@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Navigate, Outlet, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCollections, createCollection, updateCollection, deleteCollection } from '../services/collections';
@@ -10,6 +10,7 @@ import { Plus, Home, Tag, Sparkles, Edit2, Trash2, LogOut, Image, Archive, BarCh
 import { updateProfile } from 'firebase/auth';
 import { auth, logoutUser } from '../services/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDebounce } from '../hooks/useDebounce';
 
 const COLLECTION_COLORS = ['#607D4E', '#D4A373', '#5B8A52', '#C85C5C', '#A3B18A'];
 const getCollectionColor = (name: string) => {
@@ -20,7 +21,9 @@ const getCollectionColor = (name: string) => {
 const ProtectedLayout = () => {
   const { user, loading } = useAuthStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isAnalytics = location.pathname === '/analytics';
   const [isAISearchOpen, setIsAISearchOpen] = useState(false);
   const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
   const currentCollectionId = searchParams.get('collectionId');
@@ -39,6 +42,39 @@ const ProtectedLayout = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
 
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // The input keeps its own state; the URL (?q=) is updated 250ms after typing stops,
+  // replacing the history entry instead of pushing one per keystroke.
+  const urlQuery = searchParams.get('q') || '';
+  const [searchText, setSearchText] = useState(urlQuery);
+  const debouncedSearch = useDebounce(searchText, 250);
+  useEffect(() => {
+    if (debouncedSearch === urlQuery) return;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (debouncedSearch) next.set('q', debouncedSearch); else next.delete('q');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+  // Keep the box in sync when the URL changes elsewhere (e.g. navigating home clears it).
+  useEffect(() => {
+    if (urlQuery !== debouncedSearch) setSearchText(urlQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQuery]);
+
+  // ⌘K / Ctrl+K focuses search (the shortcut shown in the search box).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -302,9 +338,9 @@ const ProtectedLayout = () => {
               transition={{ duration: 0.2 }}
               onClick={() => navigate('/analytics')}
               title="Analytics"
-              className={`w-full flex items-center ${isSidebarExpanded ? 'gap-3 px-3' : 'justify-center px-0'} py-2 text-sm font-medium rounded-lg transition-colors ${window.location.pathname === '/analytics' ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
+              className={`w-full flex items-center ${isSidebarExpanded ? 'gap-3 px-3' : 'justify-center px-0'} py-2 text-sm font-medium rounded-lg transition-colors ${isAnalytics ? 'bg-[#DCE8D2] text-foreground' : 'text-foreground-secondary hover:bg-[#DCE8D2]/50'}`}
             >
-              <BarChart2 className={`w-5 h-5 flex-shrink-0 ${window.location.pathname === '/analytics' ? 'text-primary' : 'text-foreground-secondary'}`} />
+              <BarChart2 className={`w-5 h-5 flex-shrink-0 ${isAnalytics ? 'text-primary' : 'text-foreground-secondary'}`} />
               {isSidebarExpanded && <span className="whitespace-nowrap overflow-hidden">Analytics</span>}
             </motion.button>
           </div>
@@ -319,20 +355,13 @@ const ProtectedLayout = () => {
             <div className={`relative w-full flex items-center transition-all duration-300 ${isSearchFocused ? 'shadow-[0_8px_30px_rgb(0,0,0,0.06)]' : ''}`}>
               <Search className="w-5 h-5 text-foreground-secondary absolute left-4" />
               <input 
+                ref={searchInputRef}
                 type="text" 
                 placeholder="Search bookmarks, tags, notes..." 
-                value={searchParams.get('q') || ''}
+                value={searchText}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                onChange={(e) => {
-                  const newParams = new URLSearchParams(searchParams);
-                  if (e.target.value) {
-                    newParams.set('q', e.target.value);
-                  } else {
-                    newParams.delete('q');
-                  }
-                  navigate({ search: newParams.toString() });
-                }}
+                onChange={(e) => setSearchText(e.target.value)}
                 className={`w-full h-12 bg-card rounded-2xl pl-12 pr-32 py-2 text-base font-medium text-foreground transition-all duration-300 outline-none border ${isSearchFocused ? 'border-primary/40 bg-card' : 'border-border/60 hover:border-primary/20 hover:bg-card/80 shadow-sm'}`}
               />
               <div className="absolute right-3 flex items-center gap-2">
@@ -441,7 +470,9 @@ const ProtectedLayout = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pt-6 px-12 pb-12">
-          <Outlet />
+          <Suspense fallback={<div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

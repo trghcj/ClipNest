@@ -1,7 +1,7 @@
 import { X, Tag as TagIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../services/api';
+import { getBookmarks } from '../services/bookmarks';
 
 interface TagsModalProps {
   isOpen: boolean;
@@ -11,12 +11,12 @@ interface TagsModalProps {
 export function TagsModal({ isOpen, onClose }: TagsModalProps) {
   const navigate = useNavigate();
   
+  // Same cache entry as the Dashboard's "all bookmarks" list, and only fetched while open
+  // (this modal is always mounted).
   const { data: bookmarks = [] } = useQuery({
-    queryKey: ['bookmarks'],
-    queryFn: async () => {
-      const response = await apiClient.get('/bookmarks');
-      return response.data;
-    }
+    queryKey: ['bookmarks', null],
+    queryFn: getBookmarks,
+    enabled: isOpen,
   });
 
   if (!isOpen) return null;

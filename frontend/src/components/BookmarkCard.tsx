@@ -1,18 +1,20 @@
 import React from 'react';
 import { ExternalLink, Star, Archive, Trash2, Clock, BookOpen, Highlighter, Edit2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import type { Bookmark } from '../services/bookmarks';
 
 interface BookmarkCardProps {
-  bookmark: any;
+  bookmark: Bookmark;
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleArchive: (id: string, current: boolean) => void;
   onDelete: (id: string) => void;
-  onClick: (bookmark: any) => void;
-  onHighlightClick: (bookmark: any) => void;
-  onEditClick: (bookmark: any) => void;
+  onClick: (bookmark: Bookmark) => void;
+  onHighlightClick: (bookmark: Bookmark) => void;
+  onEditClick: (bookmark: Bookmark) => void;
 }
 
-export const BookmarkCard: React.FC<BookmarkCardProps> = ({
+// Memoised: a card only re-renders when its own bookmark (or a handler) changes.
+export const BookmarkCard = React.memo(function BookmarkCard({
   bookmark,
   onToggleFavorite,
   onToggleArchive,
@@ -20,7 +22,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   onClick,
   onHighlightClick,
   onEditClick
-}) => {
+}: BookmarkCardProps) {
   // Calculate reading time based on summary word count if content doesn't exist.
   // Standard reading speed is ~200 words per minute.
   const getReadingTime = () => {
@@ -39,9 +41,13 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         // Ignore malformed URLs and fall back to text-based reading time.
       }
     }
-    const text = bookmark.content || bookmark.summary || bookmark.description || "";
-    if (!text) return "1 min";
-    const words = text.trim().split(/\s+/).length;
+    // List responses don't include the page content, only its size. Extracted HTML averages
+    // roughly 8 bytes per word of readable text once markup is included.
+    const text = bookmark.summary || bookmark.description || "";
+    const words = bookmark.content_length
+      ? Math.round(bookmark.content_length / 8)
+      : text.trim() ? text.trim().split(/\s+/).length : 0;
+    if (!words) return "1 min";
     const minutes = Math.max(1, Math.ceil(words / 200));
     return `${minutes} min`;
   };
@@ -79,7 +85,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         {bookmark.thumbnail_url ? (
           <img 
             src={bookmark.thumbnail_url} 
-            alt={bookmark.title} 
+            alt={bookmark.title || ''} 
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={(e) => {
               (e.target as HTMLImageElement).src = 'https://placehold.co/600x400/EEF2E6/607D4E?text=No+Preview';
@@ -204,4 +210,4 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
       </div>
     </motion.div>
   );
-};
+});

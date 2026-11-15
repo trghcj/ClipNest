@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useCallback, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBookmarks, createBookmark, extractMetadata, deleteBookmark, updateBookmark, uploadPdfBookmark } from '../services/bookmarks';
+import { getBookmarks, createBookmark, deleteBookmark, updateBookmark, uploadPdfBookmark } from '../services/bookmarks';
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
-import type { Bookmark } from '../services/bookmarks';
+import type { Bookmark, BookmarkUpdate } from '../services/bookmarks';
 import { Bookmark as BookmarkIcon, Plus, Loader2, Sparkles, BookOpen, Clock, Folder, Tag as TagIcon, TrendingUp, Star, Archive } from 'lucide-react';
-import { ReaderModal } from '../components/ReaderModal';
-import { AnnotationsModal } from '../components/AnnotationsModal';
 import { BookmarkCard } from '../components/BookmarkCard';
 import { motion } from 'framer-motion';
+
+// The reader pulls in the rich-text editor (Tiptap) — load it only when a bookmark is opened.
+const ReaderModal = lazy(() => import('../components/ReaderModal').then((m) => ({ default: m.ReaderModal })));
+const AnnotationsModal = lazy(() => import('../components/AnnotationsModal').then((m) => ({ default: m.AnnotationsModal })));
+
+// AI summary/tags/collection are generated in the background after saving; refresh once they're likely ready.
+const AI_REFRESH_DELAY_MS = 12_000;
 
 const Dashboard = () => {
   const { user } = useAuthStore();
@@ -18,7 +23,10 @@ const Dashboard = () => {
   const [searchParams] = useSearchParams();
   const currentCollectionId = searchParams.get('collectionId');
   const searchQuery = searchParams.get('q')?.toLowerCase() || '';
-  
+  const viewParam = searchParams.get('view');
+  const aiQuery = searchParams.get('aiQuery');
+  const aiMatchesParam = searchParams.get('aiMatches');
+
   const [isModalOpen, setIsModalOpen] = useState(() => !!searchParams.get('saveUrl'));
   const [newUrl, setNewUrl] = useState(() => searchParams.get('saveUrl') || '');
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
@@ -28,41 +36,20 @@ const Dashboard = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const [readerBookmark, setReaderBookmark] = useState<Bookmark | null>(null);
-  const [isReaderOpen, setIsReaderOpen] = useState(false);
-  
   const [annotationsBookmark, setAnnotationsBookmark] = useState<Bookmark | null>(null);
-  const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
   const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const [editTags, setEditTags] = useState('');
 
-  const openEditModal = (bookmark: Bookmark) => {
+  const openEditModal = useCallback((bookmark: Bookmark) => {
     setEditingBookmark(bookmark);
     setEditTitle(bookmark.title || '');
     setEditDescription(bookmark.description || '');
     setEditUrl(bookmark.url || '');
-    setEditTags(bookmark.tags?.map((t: any) => t.name).join(', ') || '');
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingBookmark) return;
-    
-    const tagNames = editTags.split(',').map(t => t.trim()).filter(t => t);
-    
-    await updateBookmarkMutation.mutateAsync({
-      id: editingBookmark.id,
-      updates: {
-        title: editTitle,
-        description: editDescription,
-        url: editUrl,
-        tags: tagNames
-      } as any
-    });
-    setEditingBookmark(null);
-  };
+    setEditTags(bookmark.tags?.map((t) => t.name).join(', ') || '');
+  }, []);
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections'],
@@ -74,85 +61,131 @@ const Dashboard = () => {
     queryFn: () => currentCollectionId ? getCollectionBookmarks(currentCollectionId) : getBookmarks(),
   });
 
-  const filteredBookmarks = bookmarks.filter((b) => {
-    const isArchiveView = searchParams.get('view') === 'archive';
-    
-    let matchesArchive = true;
-    if (isArchiveView) {
-      matchesArchive = b.is_archived;
-    } else if (currentCollectionId) {
-      matchesArchive = showCollectionArchived ? b.is_archived : !b.is_archived;
-    } else {
-      matchesArchive = !b.is_archived;
-    }
+  // ---- Cache helpers: patch every cached bookmark list in place instead of refetching the library.
+  const patchCachedBookmarks = useCallback((fn: (list: Bookmark[]) => Bookmark[]) => {
+    queryClient.setQueriesData<Bookmark[]>({ queryKey: ['bookmarks'] }, (old) => (Array.isArray(old) ? fn(old) : old));
+  }, [queryClient]);
 
-    const matchesQuery = !searchQuery || 
-      (b.title?.toLowerCase().includes(searchQuery) || false) || 
-      (b.description?.toLowerCase().includes(searchQuery) || false) ||
-      (b.summary?.toLowerCase().includes(searchQuery) || false) ||
-      (b.tags?.some((t: any) => t.name.toLowerCase().includes(searchQuery)) || false);
-      
-    const aiMatchesParam = searchParams.get('aiMatches');
-    const matchesAi = !aiMatchesParam || aiMatchesParam.split(',').includes(b.id);
+  const snapshotBookmarks = useCallback(async () => {
+    await queryClient.cancelQueries({ queryKey: ['bookmarks'] });
+    return queryClient.getQueriesData<Bookmark[]>({ queryKey: ['bookmarks'] });
+  }, [queryClient]);
 
-    return matchesArchive && matchesQuery && matchesAi;
-  });
+  const restoreBookmarks = useCallback((snapshot?: [readonly unknown[], Bookmark[] | undefined][]) => {
+    snapshot?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+  }, [queryClient]);
 
-  const aiQuery = searchParams.get('aiQuery');
-
-  const addBookmarkMutation = useMutation({
-    mutationFn: createBookmark,
-    onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+  const updateBookmarkMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: BookmarkUpdate }) => updateBookmark(id, updates),
+    onMutate: async ({ id, updates }) => {
+      const snapshot = await snapshotBookmarks();
+      const { tags: _tags, ...fields } = updates; // tags are resolved server-side
+      patchCachedBookmarks((list) => list.map((b) => (b.id === id ? { ...b, ...fields } : b)));
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => restoreBookmarks(context?.snapshot),
+    onSuccess: (saved) => {
+      patchCachedBookmarks((list) => list.map((b) => (b.id === saved.id ? saved : b)));
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
   });
 
   const deleteBookmarkMutation = useMutation({
     mutationFn: deleteBookmark,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    onMutate: async (id: string) => {
+      const snapshot = await snapshotBookmarks();
+      patchCachedBookmarks((list) => list.filter((b) => b.id !== id));
+      return { snapshot };
     },
+    onError: (_err, _id, context) => restoreBookmarks(context?.snapshot),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analytics'] }),
   });
 
-  const updateBookmarkMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string, updates: Partial<Bookmark> }) => updateBookmark(id, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-    },
+  // Stable handlers so memoised cards don't re-render on every Dashboard render.
+  const { mutate: updateMutate } = updateBookmarkMutation;
+  const { mutate: deleteMutate } = deleteBookmarkMutation;
+  const handleToggleFavorite = useCallback((id: string, curr: boolean) => updateMutate({ id, updates: { is_favorite: !curr } }), [updateMutate]);
+  const handleToggleArchive = useCallback((id: string, curr: boolean) => updateMutate({ id, updates: { is_archived: !curr } }), [updateMutate]);
+  const handleDelete = useCallback((id: string) => {
+    if (window.confirm('Are you sure you want to delete this bookmark?')) deleteMutate(id);
+  }, [deleteMutate]);
+  const handleOpenReader = useCallback((b: Bookmark) => setReaderBookmark(b), []);
+  const handleOpenAnnotations = useCallback((b: Bookmark) => setAnnotationsBookmark(b), []);
+
+  const renderCard = (bookmark: Bookmark) => (
+    <BookmarkCard
+      bookmark={bookmark}
+      onToggleFavorite={handleToggleFavorite}
+      onToggleArchive={handleToggleArchive}
+      onDelete={handleDelete}
+      onClick={handleOpenReader}
+      onHighlightClick={handleOpenAnnotations}
+      onEditClick={openEditModal}
+    />
+  );
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBookmark) return;
+
+    const tagNames = editTags.split(',').map(t => t.trim()).filter(t => t);
+
+    await updateBookmarkMutation.mutateAsync({
+      id: editingBookmark.id,
+      updates: {
+        title: editTitle,
+        description: editDescription,
+        url: editUrl,
+        tags: tagNames
+      }
+    });
+    setEditingBookmark(null);
+  };
+
+  const filteredBookmarks = useMemo(() => {
+    const isArchiveView = viewParam === 'archive';
+    const aiMatches = aiMatchesParam ? new Set(aiMatchesParam.split(',')) : null;
+    return bookmarks.filter((b) => {
+      let matchesArchive: boolean;
+      if (isArchiveView) {
+        matchesArchive = b.is_archived;
+      } else if (currentCollectionId) {
+        matchesArchive = showCollectionArchived ? b.is_archived : !b.is_archived;
+      } else {
+        matchesArchive = !b.is_archived;
+      }
+
+      const matchesQuery = !searchQuery ||
+        (b.title?.toLowerCase().includes(searchQuery) || false) ||
+        (b.description?.toLowerCase().includes(searchQuery) || false) ||
+        (b.summary?.toLowerCase().includes(searchQuery) || false) ||
+        (b.tags?.some((t) => t.name.toLowerCase().includes(searchQuery)) || false);
+
+      const matchesAi = !aiMatches || aiMatches.has(b.id);
+      return matchesArchive && matchesQuery && matchesAi;
+    });
+  }, [bookmarks, viewParam, aiMatchesParam, currentCollectionId, showCollectionArchived, searchQuery]);
+
+  const addBookmarkMutation = useMutation({
+    mutationFn: createBookmark,
   });
 
   const handleAddBookmark = async (e: React.FormEvent) => {
     e.preventDefault();
     if (addMode === 'url' && !newUrl) return;
     if (addMode === 'pdf' && !pdfFile) return;
-    
+
     setIsExtracting(true);
     try {
-      if (addMode === 'pdf' && pdfFile) {
-        const data = await uploadPdfBookmark(pdfFile);
-        if (selectedCollectionId) {
-          try {
-            await addBookmarkToCollection(selectedCollectionId, data.id);
-          } catch (error) {
-            console.error("Failed to add to collection", error);
-          }
-        }
-      } else {
-        const metadata = await extractMetadata(newUrl);
-        const data = await addBookmarkMutation.mutateAsync({
-          url: newUrl,
-          title: metadata.title,
-          description: metadata.description,
-          thumbnail_url: metadata.image_url,
-          favicon_url: metadata.favicon_url,
-          content: metadata.content
-        });
-        if (selectedCollectionId) {
-          try {
-            await addBookmarkToCollection(selectedCollectionId, data.id);
-          } catch (error) {
-            console.error("Failed to add to collection", error);
-          }
+      // The server fetches the page and extracts title/description/content in one step.
+      const data = addMode === 'pdf' && pdfFile
+        ? await uploadPdfBookmark(pdfFile)
+        : await addBookmarkMutation.mutateAsync({ url: newUrl });
+      if (selectedCollectionId) {
+        try {
+          await addBookmarkToCollection(selectedCollectionId, data.id);
+        } catch (error) {
+          console.error("Failed to add to collection", error);
         }
       }
       setIsModalOpen(false);
@@ -160,7 +193,12 @@ const Dashboard = () => {
       setPdfFile(null);
       setSelectedCollectionId('');
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+        queryClient.invalidateQueries({ queryKey: ['collections'] });
+      }, AI_REFRESH_DELAY_MS);
+
       if (searchParams.has('saveUrl')) {
         const newParams = new URLSearchParams(searchParams);
         newParams.delete('saveUrl');
@@ -168,20 +206,26 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error("Failed to add bookmark", error);
-      alert("Failed to save. Please try again.");
+      alert(error instanceof Error && error.message ? error.message : "Failed to save. Please try again.");
     } finally {
       setIsExtracting(false);
     }
   };
 
   // Trend Data Calculations
-  const now = new Date();
-  const activeBookmarks = bookmarks.filter(b => !b.is_archived);
-  const thisWeekBookmarks = activeBookmarks.filter(b => (now.getTime() - new Date(b.created_at).getTime()) / (1000 * 3600 * 24) <= 7).length;
-  const unreadCount = activeBookmarks.filter(b => b.status === 'unread' || !b.status).length;
-  const uniqueTags = new Set(bookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size;
+  const { activeBookmarks, thisWeekBookmarks, unreadCount, uniqueTags, manualTagNames } = useMemo(() => {
+    const now = Date.now();
+    const active = bookmarks.filter(b => !b.is_archived);
+    return {
+      activeBookmarks: active,
+      thisWeekBookmarks: active.filter(b => (now - new Date(b.created_at).getTime()) / (1000 * 3600 * 24) <= 7).length,
+      unreadCount: active.filter(b => b.status !== 'completed').length,
+      uniqueTags: new Set(bookmarks.flatMap(b => b.tags?.map(t => t.name) || [])).size,
+      manualTagNames: Array.from(new Set(bookmarks.flatMap(b => b.tags?.filter(t => !t.is_ai_generated).map(t => t.name) || []))).sort(),
+    };
+  }, [bookmarks]);
 
-  const isMainDashboard = !currentCollectionId && !searchQuery && !searchParams.get('view') && !aiQuery;
+  const isMainDashboard = !currentCollectionId && !searchQuery && !viewParam && !aiQuery;
 
   // Render Horizontal Section
   const renderSection = (title: string, icon: React.ReactNode, items: Bookmark[]) => {
@@ -197,15 +241,7 @@ const Dashboard = () => {
         <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x">
           {items.map((bookmark) => (
             <div key={bookmark.id} className="min-w-[280px] sm:min-w-[320px] max-w-[320px] shrink-0 snap-start h-[340px]">
-              <BookmarkCard 
-                bookmark={bookmark}
-                onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
-                onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
-                onDelete={(id) => window.confirm("Delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
-                onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
-                onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
-                onEditClick={openEditModal}
-              />
+              {renderCard(bookmark)}
             </div>
           ))}
         </div>
@@ -361,7 +397,10 @@ const Dashboard = () => {
       ) : isMainDashboard ? (
         <div className="space-y-8">
           <div className="space-y-4">
-            {renderSection("Continue Reading", <BookOpen className="w-5 h-5" />, activeBookmarks.filter(b => b.status === 'reading' || b.status === 'unread').slice(0, 8))}
+            {renderSection("Continue Reading", <BookOpen className="w-5 h-5" />, [
+              ...activeBookmarks.filter(b => b.status === 'reading'),
+              ...activeBookmarks.filter(b => !b.status || b.status === 'unread'),
+            ].slice(0, 8))}
             {renderSection("Favorites", <Star className="w-5 h-5" />, activeBookmarks.filter(b => b.is_favorite))}
           </div>
 
@@ -376,15 +415,7 @@ const Dashboard = () => {
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {activeBookmarks.filter(b => !b.is_favorite).map((bookmark) => (
                   <div key={bookmark.id} className="h-[340px]">
-                    <BookmarkCard 
-                      bookmark={bookmark}
-                      onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
-                      onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
-                      onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
-                      onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
-                      onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
-                      onEditClick={openEditModal}
-                    />
+                    {renderCard(bookmark)}
                   </div>
                 ))}
               </div>
@@ -411,15 +442,7 @@ const Dashboard = () => {
                   .filter(b => !(currentCollectionId && !aiQuery && searchParams.get('view') !== 'archive' && !searchParams.get('tag') && b.is_favorite))
                   .map((bookmark) => (
                   <div key={bookmark.id} className="h-[340px]">
-                    <BookmarkCard 
-                      bookmark={bookmark}
-                      onToggleFavorite={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_favorite: !curr } })}
-                      onToggleArchive={(id, curr) => updateBookmarkMutation.mutate({ id, updates: { is_archived: !curr } })}
-                      onDelete={(id) => window.confirm("Are you sure you want to delete this bookmark?") && deleteBookmarkMutation.mutate(id)}
-                      onClick={(b) => { setReaderBookmark(b); setIsReaderOpen(true); }}
-                      onHighlightClick={(b) => { setAnnotationsBookmark(b); setIsAnnotationsOpen(true); }}
-                      onEditClick={openEditModal}
-                    />
+                    {renderCard(bookmark)}
                   </div>
                 ))}
               </div>
@@ -523,25 +546,24 @@ const Dashboard = () => {
         </div>
       )}
       
-      <ReaderModal 
-        isOpen={isReaderOpen}
-        onClose={() => {
-          setIsReaderOpen(false);
-          setReaderBookmark(null);
-        }}
-        bookmark={readerBookmark}
-      />
-      
-      {isAnnotationsOpen && annotationsBookmark && (
-        <AnnotationsModal 
-          isOpen={isAnnotationsOpen}
-          onClose={() => {
-            setIsAnnotationsOpen(false);
-            setAnnotationsBookmark(null);
-          }}
-          bookmark={annotationsBookmark}
-        />
-      )}
+      <Suspense fallback={null}>
+        {readerBookmark && (
+          <ReaderModal
+            key={readerBookmark.id}
+            isOpen
+            onClose={() => setReaderBookmark(null)}
+            bookmark={readerBookmark}
+          />
+        )}
+        
+        {annotationsBookmark && (
+          <AnnotationsModal 
+            isOpen
+            onClose={() => setAnnotationsBookmark(null)}
+            bookmark={annotationsBookmark}
+          />
+        )}
+      </Suspense>
 
       {/* Edit Modal */}
       {editingBookmark && (
@@ -589,7 +611,7 @@ const Dashboard = () => {
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary"
                 />
                 <div className="mt-2 flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar">
-                  {Array.from(new Set(bookmarks.flatMap(b => b.tags?.filter(t => !t.is_ai_generated).map(t => t.name) || []))).sort().map(tag => (
+                  {manualTagNames.map(tag => (
                     <button
                       key={tag}
                       type="button"

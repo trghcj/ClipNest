@@ -3,11 +3,18 @@ import tippy from 'tippy.js';
 import type { Instance as TippyInstance } from 'tippy.js';
 import { MentionList } from './MentionList';
 import { getBookmarks } from '../services/bookmarks';
+import { queryClient } from '../services/queryClient';
 
 export const suggestion = {
   items: async ({ query }: { query: string }) => {
     try {
-      const bookmarks = await getBookmarks();
+      // Runs on every keystroke after "@": reuse the Dashboard's cached library
+      // instead of downloading every bookmark each time.
+      const bookmarks = await queryClient.fetchQuery({
+        queryKey: ['bookmarks', null],
+        queryFn: getBookmarks,
+        staleTime: 60_000,
+      });
       return bookmarks
         .filter(item => (item.title || item.url).toLowerCase().includes(query.toLowerCase()))
         .slice(0, 10);

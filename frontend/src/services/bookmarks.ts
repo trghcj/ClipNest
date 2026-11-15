@@ -1,6 +1,16 @@
 import apiClient, { API_URL } from './api';
 import { auth } from './firebase';
 
+export type BookmarkStatus = 'unread' | 'reading' | 'completed';
+
+export interface Tag {
+  id: string;
+  name: string;
+  is_ai_generated: boolean;
+  created_at: string;
+}
+
+/** What list endpoints return: everything a card needs, without the extracted page content. */
 export interface Bookmark {
   id: string;
   user_id: string;
@@ -9,32 +19,59 @@ export interface Bookmark {
   description: string | null;
   thumbnail_url: string | null;
   favicon_url: string | null;
-  content_type: string;
   is_favorite: boolean;
   is_archived: boolean;
-  status: string;
+  status: BookmarkStatus | null;
   summary: string | null;
-  content: string | null;
-  ai_summary: string | null;
-  tags?: { id: string; name: string; is_ai_generated: boolean; created_at: string }[];
+  /** Size in bytes of the extracted content (used for reading-time estimates). */
+  content_length: number;
+  tags?: Tag[];
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
 }
 
+/** A single bookmark with its extracted content, as loaded by the reader. */
+export interface BookmarkDetail extends Bookmark {
+  content: string | null;
+}
+
+export interface BookmarkUpdate {
+  url?: string;
+  title?: string;
+  description?: string;
+  is_favorite?: boolean;
+  is_archived?: boolean;
+  status?: BookmarkStatus;
+  tags?: string[];
+}
+
+const PAGE_SIZE = 500;
+
+/** Fetches the whole library, page by page (the API caps a page at 500). */
 export const getBookmarks = async (): Promise<Bookmark[]> => {
-  const response = await apiClient.get('bookmarks');
+  const all: Bookmark[] = [];
+  for (let skip = 0; ; skip += PAGE_SIZE) {
+    const response = await apiClient.get<Bookmark[]>('bookmarks', { params: { skip, limit: PAGE_SIZE } });
+    all.push(...response.data);
+    if (response.data.length < PAGE_SIZE) return all;
+  }
+};
+
+export const getBookmark = async (id: string): Promise<BookmarkDetail> => {
+  const response = await apiClient.get<BookmarkDetail>(`bookmarks/${id}`);
   return response.data;
 };
 
-export const createBookmark = async (bookmark: Partial<Bookmark>): Promise<Bookmark> => {
-  const response = await apiClient.post('bookmarks', bookmark);
+/** The server fetches the page and extracts title, description, images and content itself. */
+export const createBookmark = async (bookmark: { url: string }): Promise<Bookmark> => {
+  const response = await apiClient.post<Bookmark>('bookmarks', bookmark);
   return response.data;
 };
 
 export const uploadPdfBookmark = async (file: File): Promise<Bookmark> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
   const response = await fetch(`${API_URL}bookmarks/pdf`, {
     method: 'POST',
@@ -46,15 +83,11 @@ export const uploadPdfBookmark = async (file: File): Promise<Bookmark> => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to upload PDF');
+    const detail = await response.json().then((d) => d?.detail).catch(() => null);
+    throw new Error(typeof detail === 'string' ? detail : 'Failed to upload PDF');
   }
 
   return response.json();
-};
-
-export const extractMetadata = async (url: string) => {
-  const response = await apiClient.post('bookmarks/extract-metadata', { url });
-  return response.data;
 };
 
 export const deleteBookmark = async (id: string) => {
@@ -62,8 +95,8 @@ export const deleteBookmark = async (id: string) => {
   return response.data;
 };
 
-export const updateBookmark = async (id: string, updates: Partial<Bookmark>): Promise<Bookmark> => {
-  const response = await apiClient.put(`bookmarks/${id}`, updates);
+export const updateBookmark = async (id: string, updates: BookmarkUpdate): Promise<Bookmark> => {
+  const response = await apiClient.put<Bookmark>(`bookmarks/${id}`, updates);
   return response.data;
 };
 
