@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import firebase_admin
 from firebase_admin import credentials
 from fastapi import FastAPI
@@ -9,6 +10,12 @@ from dotenv import load_dotenv
 from app.api.api import api_router
 
 load_dotenv()
+
+# Services log through `logging`; make INFO+ visible in the Render logs (LOG_LEVEL to override).
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 # Initialize Firebase Admin
 try:

@@ -7,7 +7,7 @@ class Annotation(Base):
     __tablename__ = "clipnest_annotations"
 
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
-    bookmark_id = Column(String, ForeignKey("clipnest_bookmarks.id", ondelete="CASCADE"), nullable=False)
+    bookmark_id = Column(String, ForeignKey("clipnest_bookmarks.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(String, ForeignKey("clipnest_users.id", ondelete="CASCADE"), nullable=False)
     highlight_text = Column(String, nullable=False)
     note_text = Column(String, nullable=True)

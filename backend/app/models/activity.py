@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Index
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -20,3 +20,5 @@ class ActivityLog(Base):
     action_type = Column(String, nullable=False) # e.g., "read", "favorite", "archive", "search"
     target_id = Column(String) # e.g., bookmark_id
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (Index("ix_clipnest_activity_logs_user_created", "user_id", "created_at"),)
