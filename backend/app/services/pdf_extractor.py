@@ -54,6 +54,16 @@ async def extract_pdf_metadata(url: str) -> dict:
     return _fallback_metadata(url)
 
 
+async def parse_pdf_response(pdf_bytes: bytes, url: str) -> dict:
+    """Parse a PDF that was already downloaded from ``url``."""
+    try:
+        fallback_title = os.path.basename(urlparse(url).path) or url
+        return await asyncio.to_thread(_parse_pdf, pdf_bytes, fallback_title)
+    except Exception as e:
+        logger.info("Error parsing PDF from %s: %s", url, e)
+        return _fallback_metadata(url)
+
+
 async def extract_local_pdf(pdf_bytes: bytes, filename: str) -> dict:
     try:
         return await asyncio.to_thread(_parse_pdf, pdf_bytes, filename)
