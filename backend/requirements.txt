@@ -24,7 +24,7 @@ google-cloud-core==2.6.0
 google-cloud-firestore==2.34.1
 google-cloud-storage==3.17.1
 google-crc32c==1.8.0
-google-genai==2.10.0
+google-genai==3.2.0
 google-resumable-media==2.10.0
 googleapis-common-protos==1.76.0
 greenlet==3.5.6
