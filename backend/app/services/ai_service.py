@@ -113,11 +113,12 @@ async def generate_bookmark_metadata(url: str, title: str, description: str, use
         return AIResult(summary="", tags=[], suggested_collection=None)
 
 
-async def perform_semantic_search(query: str, bookmarks_data: str) -> List[str]:
-    """Uses Gemini to find bookmarks matching a natural language query."""
+async def perform_semantic_search(query: str, bookmarks_data: str) -> List[str] | None:
+    """Uses Gemini to find bookmarks matching a natural language query.
+    Returns None (not []) when the AI is unavailable, so callers can fall back."""
     client = get_genai_client()
     if not client:
-        return []
+        return None
 
     prompt = f"""
     You are an intelligent search assistant.
@@ -141,4 +142,4 @@ async def perform_semantic_search(query: str, bookmarks_data: str) -> List[str]:
         return json.loads(response.text).get("matching_ids", [])
     except Exception as e:
         logger.warning("Error in semantic search: %s", e)
-        return []
+        return None

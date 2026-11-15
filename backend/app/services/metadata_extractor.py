@@ -139,6 +139,10 @@ async def extract_metadata(url: str) -> dict:
         if is_youtube_url(safe_url):
             return await _extract_youtube(safe_url)
         response = await safe_get(safe_url)
+        if response.headers.get("content-type", "").lower().startswith("application/pdf"):
+            # PDF served from a URL that doesn't end in .pdf (e.g. arxiv.org/pdf/<id>).
+            from .pdf_extractor import parse_pdf_response
+            return await parse_pdf_response(response.content, str(response.url))
         return await asyncio.to_thread(_parse_html_page, response.text, str(response.url))
     except UnsafeURLError as e:
         logger.warning("Blocked metadata fetch: %s", e)
