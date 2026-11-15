@@ -33,7 +33,7 @@
     "react-router": "8.3.0",
     "react-router-dom": "7.18.2",
     "recharts": "^3.10.1",
-    "set-cookie-parser": "^3.1.2",
+    "set-cookie-parser": "^3.2.2",
     "tailwind-merge": "^3.6.0",
     "tippy.js": "^6.3.7",
     "zustand": "^5.0.14",
