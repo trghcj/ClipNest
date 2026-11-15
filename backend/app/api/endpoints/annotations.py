@@ -95,6 +95,7 @@ async def create_extension_annotation(
             status="unread",
         )
         db.add(bookmark)
+        await db.flush()  # insert the bookmark before the annotation that references it
         # Summary/tags are generated after the response, once the bookmark is committed.
         background_tasks.add_task(process_bookmark_ai, bookmark.id, url_str, bookmark.title or "", bookmark.description or "", bookmark.content)
 
