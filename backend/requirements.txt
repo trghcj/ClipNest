@@ -40,7 +40,7 @@ idna==3.18
 lxml==6.1.3
 lxml_html_clean==0.4.5
 Mako==1.4.3
-MarkupSafe==3.0.3
+MarkupSafe==3.0.4
 msgpack==1.2.4
 multidict==6.9.1
 packaging==26.2
