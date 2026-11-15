@@ -27,3 +27,7 @@ updates:
           - "storage3"
           - "postgrest"
           - "realtime"
+      # grpcio-status requires grpcio >= its own version.
+      grpc:
+        patterns:
+          - "grpcio*"
