@@ -7,6 +7,7 @@ from typing import List
 
 from bs4 import BeautifulSoup
 from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
 from .metadata_extractor import fetch_youtube_transcript
@@ -14,8 +15,11 @@ from .url_utils import is_youtube_url, safe_get, youtube_video_id
 
 logger = logging.getLogger(__name__)
 
-MODEL = "gemini-2.5-flash"
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 MAX_CONTENT_CHARS = 15000
+# google-genai 3.x switched the default Gemini API version from v1beta to v1. Structured
+# JSON output (response_schema) has always been used through v1beta here, so pin it.
+GEMINI_API_VERSION = os.getenv("GEMINI_API_VERSION", "v1beta")
 
 
 class AIResult(BaseModel):
@@ -32,7 +36,9 @@ class AISearchResult(BaseModel):
 def get_genai_client():
     """One shared client (and connection pool) per process; None when no API key is configured."""
     api_key = os.getenv("GEMINI_API_KEY")
-    return genai.Client(api_key=api_key) if api_key else None
+    if not api_key:
+        return None
+    return genai.Client(api_key=api_key, http_options=types.HttpOptions(api_version=GEMINI_API_VERSION))
 
 
 def html_to_text(markup: str, limit: int = MAX_CONTENT_CHARS) -> str:
