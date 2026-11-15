@@ -1,0 +1,13 @@
+name: ClipNest CodeQL config
+
+# ClipNest's core feature is fetching user-supplied URLs (bookmarks). All server-side
+# fetches go through backend/app/services/url_utils.safe_get, which rejects
+# private/internal addresses on every redirect hop, connects to the validated IP
+# (no DNS rebinding) and caps response size; backend/tests/test_url_utils.py covers it.
+# The generic SSRF queries can't recognise that guard, so they are excluded.
+# Rule for contributors: never fetch a user-supplied URL without safe_get.
+query-filters:
+  - exclude:
+      id: py/full-ssrf
+  - exclude:
+      id: py/partial-ssrf
