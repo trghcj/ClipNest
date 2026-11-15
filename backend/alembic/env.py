@@ -20,6 +20,11 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# This Supabase database is shared with other projects (e.g. TaskFlow) whose Alembic
+# setups use the default `alembic_version` table. ClipNest keeps its migration state in
+# its own table so the projects never overwrite each other's position.
+VERSION_TABLE = "clipnest_alembic_version"
+
 def include_name(name, type_, parent_names):
     if type_ == "table":
         return name is not None and name.startswith("clipnest_")
@@ -39,6 +44,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         include_name=include_name,
+        version_table=VERSION_TABLE,
     )
 
     with context.begin_transaction():
@@ -49,6 +55,7 @@ def do_run_migrations(connection):
         connection=connection, 
         target_metadata=target_metadata,
         include_name=include_name,
+        version_table=VERSION_TABLE,
     )
     with context.begin_transaction():
         context.run_migrations()
