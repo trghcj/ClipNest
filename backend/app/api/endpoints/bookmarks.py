@@ -22,6 +22,7 @@ from ...services.ai_service import perform_semantic_search
 from ...services.background_tasks import process_bookmark_ai
 from ...services.metadata_extractor import extract_metadata
 from ...services.pdf_extractor import MAX_UPLOAD_PDF_SIZE, extract_local_pdf
+from ...services.search import full_text_matches
 from ...services.url_utils import UnsafeURLError, assert_allowed_external_url
 
 router = APIRouter()
@@ -29,7 +30,10 @@ router = APIRouter()
 # List views never need the extracted page content or the note.
 LIST_OPTIONS = (defer(Bookmark.content), noload(Bookmark.note))
 MAX_PAGE_SIZE = 500
-AI_SEARCH_MAX_BOOKMARKS = 300  # keeps the prompt bounded as libraries grow
+# AI search sends Gemini at most this many candidates: full-text matches first, then the
+# most recent bookmarks (so purely semantic queries still have something to rank).
+AI_SEARCH_CANDIDATES = 150
+AI_SEARCH_FULL_TEXT_LIMIT = 100
 
 
 async def _get_owned_bookmark(db: AsyncSession, bookmark_id: str, user_id: str) -> Bookmark:
@@ -128,13 +132,20 @@ async def read_bookmarks(
 
 @router.post("/ai-search", response_model=AISearchResponse)
 async def ai_search_bookmarks(request: AISearchRequest, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
-    stmt = (
+    # 1. Keyword candidates from Postgres full-text search (title, description, summary, tags).
+    fts_stmt = full_text_matches(current_user, request.query, AI_SEARCH_FULL_TEXT_LIMIT, *LIST_OPTIONS)
+    text_matches = (await db.execute(fts_stmt)).scalars().all() if fts_stmt is not None else []
+
+    # 2. Top up with recent bookmarks so semantic matches without shared words can still be found.
+    seen = {b.id for b in text_matches}
+    recent_stmt = (
         select(Bookmark).options(*LIST_OPTIONS)
         .where(Bookmark.user_id == current_user)
         .order_by(Bookmark.created_at.desc())
-        .limit(AI_SEARCH_MAX_BOOKMARKS)
+        .limit(AI_SEARCH_CANDIDATES)
     )
-    bookmarks = (await db.execute(stmt)).scalars().all()
+    recent = [b for b in (await db.execute(recent_stmt)).scalars().all() if b.id not in seen]
+    bookmarks = (list(text_matches) + recent)[:AI_SEARCH_CANDIDATES]
     if not bookmarks:
         return {"matching_ids": []}
 
@@ -149,6 +160,9 @@ async def ai_search_bookmarks(request: AISearchRequest, db: AsyncSession = Depen
         for b in bookmarks
     ]
     matching_ids = await perform_semantic_search(request.query, json.dumps(payload))
+    if matching_ids is None:
+        # AI unavailable (no API key, quota, outage): fall back to the keyword matches.
+        return {"matching_ids": [b.id for b in text_matches]}
     valid_ids = {b.id for b in bookmarks}
     return {"matching_ids": [i for i in matching_ids if i in valid_ids]}
 
