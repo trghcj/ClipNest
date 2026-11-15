@@ -6,6 +6,11 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      # Tiptap packages pin exact peer versions of each other; they must move together.
+      tiptap:
+        patterns:
+          - "@tiptap/*"
 
   # Maintain dependencies for the FastAPI backend (pip)
   - package-ecosystem: "pip"
@@ -13,3 +18,12 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      # supabase pins exact versions of its sub-packages; they must move together.
+      supabase:
+        patterns:
+          - "supabase"
+          - "supabase-*"
+          - "storage3"
+          - "postgrest"
+          - "realtime"
