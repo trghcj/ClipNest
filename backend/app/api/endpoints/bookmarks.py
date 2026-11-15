@@ -22,6 +22,7 @@ from ...services.ai_service import perform_semantic_search
 from ...services.background_tasks import process_bookmark_ai
 from ...services.metadata_extractor import extract_metadata
 from ...services.pdf_extractor import MAX_UPLOAD_PDF_SIZE, extract_local_pdf
+from ...services.url_utils import UnsafeURLError, assert_allowed_external_url
 
 router = APIRouter()
 
@@ -41,14 +42,22 @@ async def _get_owned_bookmark(db: AsyncSession, bookmark_id: str, user_id: str) 
 
 @router.post("/extract-metadata", response_model=URLMetadataResponse)
 async def get_metadata(request: URLMetadataRequest, current_user: str = Depends(get_current_user)):
-    return await extract_metadata(request.url)
+    try:
+        safe_url = await assert_allowed_external_url(request.url)
+    except UnsafeURLError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return await extract_metadata(safe_url)
 
 
 @router.post("", response_model=BookmarkListItem)
 async def create_bookmark(bookmark: BookmarkCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     # Extract on the server: the page is fetched once and its content never round-trips
     # through (or can be forged by) the browser.
-    metadata = await extract_metadata(bookmark.url)
+    try:
+        safe_url = await assert_allowed_external_url(bookmark.url)
+    except UnsafeURLError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    metadata = await extract_metadata(safe_url)
     db_bookmark = Bookmark(
         id=str(uuid.uuid4()),  # set now so the activity log below can reference it
         user_id=current_user,

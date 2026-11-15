@@ -6,7 +6,7 @@ from urllib.parse import quote, urljoin, urlparse
 from bs4 import BeautifulSoup
 from readability import Document
 
-from .url_utils import UnsafeURLError, is_youtube_url, safe_get, youtube_video_id
+from .url_utils import UnsafeURLError, assert_allowed_external_url, is_youtube_url, safe_get, youtube_video_id
 
 logger = logging.getLogger(__name__)
 
@@ -132,12 +132,13 @@ def _parse_html_page(page_html: str, url: str) -> dict:
 
 async def extract_metadata(url: str) -> dict:
     try:
-        if urlparse(url).path.lower().endswith(".pdf"):
+        safe_url = await assert_allowed_external_url(url)
+        if urlparse(safe_url).path.lower().endswith(".pdf"):
             from .pdf_extractor import extract_pdf_metadata
-            return await extract_pdf_metadata(url)
-        if is_youtube_url(url):
-            return await _extract_youtube(url)
-        response = await safe_get(url)
+            return await extract_pdf_metadata(safe_url)
+        if is_youtube_url(safe_url):
+            return await _extract_youtube(safe_url)
+        response = await safe_get(safe_url)
         return await asyncio.to_thread(_parse_html_page, response.text, str(response.url))
     except UnsafeURLError as e:
         logger.warning("Blocked metadata fetch: %s", e)

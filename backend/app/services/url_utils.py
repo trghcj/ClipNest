@@ -1,6 +1,7 @@
 """Helpers for fetching user-supplied URLs safely, and for recognising YouTube links."""
 import asyncio
 import ipaddress
+import os
 import re
 import socket
 from urllib.parse import urljoin, urlparse, parse_qs
@@ -21,6 +22,32 @@ class UnsafeURLError(ValueError):
 
 class ResponseTooLargeError(ValueError):
     """The response body exceeded the allowed size."""
+
+
+def normalize_external_url(url: str) -> str:
+    """Return a normalized external URL or raise UnsafeURLError."""
+    normalized = (url or "").strip()
+    parsed = urlparse(normalized)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise UnsafeURLError(f"Unsupported URL: {url}")
+    if parsed.username or parsed.password:
+        raise UnsafeURLError("URLs with credentials are not allowed")
+    return parsed.geturl()
+
+
+async def assert_allowed_external_url(url: str) -> str:
+    """Validate user-provided URL against optional host allowlist and SSRF checks."""
+    normalized = normalize_external_url(url)
+    host = (urlparse(normalized).hostname or "").lower()
+    allowed = {
+        h.strip().lower()
+        for h in os.getenv("ALLOWED_METADATA_HOSTS", "").split(",")
+        if h.strip()
+    }
+    if allowed and host not in allowed:
+        raise UnsafeURLError(f"Host is not allowed: {host}")
+    await assert_public_url(normalized)
+    return normalized
 
 
 async def assert_public_url(url: str) -> None:

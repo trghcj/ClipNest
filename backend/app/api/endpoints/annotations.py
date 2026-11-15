@@ -12,6 +12,7 @@ from app.models.bookmark import Bookmark
 from app.schemas.annotation import AnnotationCreate, AnnotationResponse, ExtensionAnnotationCreate
 from app.services.background_tasks import process_bookmark_ai
 from app.services.metadata_extractor import extract_metadata
+from app.services.url_utils import UnsafeURLError, assert_allowed_external_url
 
 router = APIRouter()
 
@@ -77,7 +78,10 @@ async def create_extension_annotation(
 ):
     # Used by the Chrome extension: attach the highlight to the bookmark for this URL,
     # creating that bookmark silently if the user hasn't saved the page yet.
-    url_str = str(annotation.url)
+    try:
+        url_str = await assert_allowed_external_url(str(annotation.url))
+    except UnsafeURLError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     stmt = select(Bookmark).where(Bookmark.url == url_str, Bookmark.user_id == current_user).limit(1)
     bookmark = (await db.execute(stmt)).scalars().first()
 
