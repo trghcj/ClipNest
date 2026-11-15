@@ -62,9 +62,22 @@ export const getBookmark = async (id: string): Promise<BookmarkDetail> => {
   return response.data;
 };
 
-/** The server fetches the page and extracts title, description, images and content itself. */
-export const createBookmark = async (bookmark: { url: string }): Promise<Bookmark> => {
-  const response = await apiClient.post<Bookmark>('bookmarks', bookmark);
+/** The server fetches the page and extracts title, description, images and content itself.
+ *  If the URL is already in the library, the existing bookmark comes back with already_saved. */
+export const createBookmark = async (bookmark: { url: string }): Promise<Bookmark & { already_saved?: boolean }> => {
+  const response = await apiClient.post<Bookmark & { already_saved?: boolean }>('bookmarks', bookmark);
+  return response.data;
+};
+
+/** Regenerate one bookmark's AI summary/tags (re-fetching the page if it has no content). */
+export const refreshBookmarkAI = async (id: string): Promise<{ queued: number }> => {
+  const response = await apiClient.post(`bookmarks/${id}/refresh-ai`);
+  return response.data;
+};
+
+/** Queue AI summaries for bookmarks that don't have one yet (up to 25 per call). */
+export const backfillAI = async (): Promise<{ queued: number; remaining: number }> => {
+  const response = await apiClient.post('bookmarks/backfill-ai');
   return response.data;
 };
 

@@ -1,9 +1,9 @@
 import React from 'react';
 import DOMPurify from 'dompurify';
-import { X, BookOpen, Save, Loader2, Maximize2, Minimize2, SplitSquareHorizontal, FileText, Edit3, CheckCircle2, Circle } from 'lucide-react';
+import { X, BookOpen, Save, Loader2, Maximize2, Minimize2, SplitSquareHorizontal, FileText, Edit3, CheckCircle2, Circle, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getBookmark, updateBookmark } from '../services/bookmarks';
+import { getBookmark, refreshBookmarkAI, updateBookmark } from '../services/bookmarks';
 import type { Bookmark, BookmarkStatus } from '../services/bookmarks';
 import { getNote, upsertNote } from '../services/notes';
 import { RichTextEditor } from './RichTextEditor';
@@ -43,6 +43,7 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
   const [noteState, setNoteState] = React.useState<'idle' | 'loading' | 'ready'>('idle');
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
   const [status, setStatus] = React.useState<BookmarkStatus>(bookmark?.status || 'unread');
+  const [regenState, setRegenState] = React.useState<'idle' | 'sending' | 'queued'>('idle');
 
   const bookmarkId = bookmark?.id;
   const debouncedNoteContent = useDebounce(noteContent, 1000);
@@ -190,6 +191,22 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
 
   const isCompleted = status === 'completed';
 
+  const handleRegenerate = async () => {
+    setRegenState('sending');
+    try {
+      await refreshBookmarkAI(bookmark.id);
+      setRegenState('queued');
+      // Runs in the background (page fetch + Gemini); pick up the result shortly after.
+      window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+        queryClient.invalidateQueries({ queryKey: ['bookmark', bookmark.id] });
+      }, 15_000);
+    } catch (error) {
+      setRegenState('idle');
+      alert(error instanceof Error ? error.message : 'Could not start generating the summary.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 md:p-6">
       <div
@@ -207,6 +224,17 @@ export const ReaderModal: React.FC<ReaderModalProps> = ({ isOpen, onClose, bookm
             </h2>
           </div>
           <div className="flex items-center gap-1">
+            {!bookmark.summary && (
+              <button
+                onClick={handleRegenerate}
+                disabled={regenState !== 'idle'}
+                className="flex items-center gap-1.5 px-3 py-1.5 mr-1 rounded-full text-xs font-semibold transition-colors bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-70"
+                title="Fetch the page again if needed and generate an AI summary and tags"
+              >
+                {regenState === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {regenState === 'queued' ? 'Generating…' : 'Generate AI summary'}
+              </button>
+            )}
             <button
               onClick={() => setBookmarkStatus(isCompleted ? 'reading' : 'completed')}
               className={clsx(

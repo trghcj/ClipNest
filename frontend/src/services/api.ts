@@ -30,4 +30,14 @@ apiClient.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Surface the API's own error message (e.g. rate-limit or validation details) instead of
+// axios's generic "Request failed with status code ...".
+apiClient.interceptors.response.use(undefined, (error) => {
+  const detail = error?.response?.data?.detail;
+  if (typeof detail === 'string' && detail) {
+    error.message = detail;
+  }
+  return Promise.reject(error);
+});
+
 export default apiClient;

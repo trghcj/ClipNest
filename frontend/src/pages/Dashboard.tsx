@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useCallback, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getBookmarks, createBookmark, deleteBookmark, updateBookmark, uploadPdfBookmark } from '../services/bookmarks';
+import { getBookmarks, createBookmark, deleteBookmark, updateBookmark, uploadPdfBookmark, backfillAI } from '../services/bookmarks';
 import { getCollections, getCollectionBookmarks, addBookmarkToCollection } from '../services/collections';
 import type { Bookmark, BookmarkUpdate } from '../services/bookmarks';
 import { Bookmark as BookmarkIcon, Plus, Loader2, Sparkles, BookOpen, Clock, Folder, Tag as TagIcon, TrendingUp, Star, Archive } from 'lucide-react';
@@ -178,7 +178,7 @@ const Dashboard = () => {
     setIsExtracting(true);
     try {
       // The server fetches the page and extracts title/description/content in one step.
-      const data = addMode === 'pdf' && pdfFile
+      const data: Bookmark & { already_saved?: boolean } = addMode === 'pdf' && pdfFile
         ? await uploadPdfBookmark(pdfFile)
         : await addBookmarkMutation.mutateAsync({ url: newUrl });
       if (selectedCollectionId) {
@@ -194,10 +194,16 @@ const Dashboard = () => {
       setSelectedCollectionId('');
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
-      window.setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-        queryClient.invalidateQueries({ queryKey: ['collections'] });
-      }, AI_REFRESH_DELAY_MS);
+      if (data.already_saved) {
+        alert(selectedCollectionId
+          ? 'This link is already in your library, so it was added to the collection instead.'
+          : 'This link is already in your library.');
+      } else {
+        window.setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+          queryClient.invalidateQueries({ queryKey: ['collections'] });
+        }, AI_REFRESH_DELAY_MS);
+      }
 
       if (searchParams.has('saveUrl')) {
         const newParams = new URLSearchParams(searchParams);
@@ -213,10 +219,12 @@ const Dashboard = () => {
   };
 
   // Trend Data Calculations
-  const { activeBookmarks, thisWeekBookmarks, unreadCount, uniqueTags, manualTagNames } = useMemo(() => {
+  const { activeBookmarks, thisWeekBookmarks, unreadCount, uniqueTags, manualTagNames, missingSummaryCount } = useMemo(() => {
     const now = Date.now();
     const active = bookmarks.filter(b => !b.is_archived);
     return {
+      // Older than 2 minutes, so bookmarks whose AI step is still running aren't counted.
+      missingSummaryCount: bookmarks.filter(b => !b.summary && now - new Date(b.created_at).getTime() > 120_000).length,
       activeBookmarks: active,
       thisWeekBookmarks: active.filter(b => (now - new Date(b.created_at).getTime()) / (1000 * 3600 * 24) <= 7).length,
       unreadCount: active.filter(b => b.status !== 'completed').length,
@@ -226,6 +234,27 @@ const Dashboard = () => {
   }, [bookmarks]);
 
   const isMainDashboard = !currentCollectionId && !searchQuery && !viewParam && !aiQuery;
+
+  // "Generate missing AI summaries" (bookmarks whose AI step was lost to a restart, or that
+  // were saved while the page couldn't be fetched).
+  const [backfillMessage, setBackfillMessage] = useState<string | null>(null);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    try {
+      const { queued, remaining } = await backfillAI();
+      setBackfillMessage(queued
+        ? `Generating summaries for ${queued} bookmark${queued === 1 ? '' : 's'}${remaining ? ` (${remaining} more after this batch)` : ''}. They'll appear over the next few minutes.`
+        : 'Nothing to generate.');
+      // Processed one at a time in the background; refresh a few times as they land.
+      [20_000, 60_000, 120_000, 240_000].forEach((ms) =>
+        window.setTimeout(() => queryClient.invalidateQueries({ queryKey: ['bookmarks'] }), ms));
+    } catch (error) {
+      setBackfillMessage(error instanceof Error ? error.message : 'Could not start generating summaries.');
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
 
   // Render Horizontal Section
   const renderSection = (title: string, icon: React.ReactNode, items: Bookmark[]) => {
@@ -350,6 +379,27 @@ const Dashboard = () => {
           </div>
         </motion.div>
       </div>
+
+      {isMainDashboard && (missingSummaryCount > 0 || backfillMessage) && (
+        <div className="bg-card border border-border px-5 py-4 rounded-xl flex items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 text-sm text-foreground-secondary">
+            <Sparkles className="w-5 h-5 text-primary shrink-0" />
+            <span>
+              {backfillMessage ?? `${missingSummaryCount} bookmark${missingSummaryCount === 1 ? " doesn't" : "s don't"} have an AI summary yet.`}
+            </span>
+          </div>
+          {!backfillMessage && (
+            <button
+              onClick={handleBackfill}
+              disabled={isBackfilling}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary-hover disabled:opacity-50 transition-colors rounded-lg text-sm font-semibold"
+            >
+              {isBackfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              Generate summaries
+            </button>
+          )}
+        </div>
+      )}
 
       {aiQuery && (
         <div className="bg-primary/10 border border-primary/20 text-primary px-5 py-4 rounded-xl flex items-center justify-between shadow-sm">

@@ -17,6 +17,18 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
+# Error monitoring (optional): set SENTRY_DSN in the Render environment to enable.
+# Unhandled exceptions and logger.exception()/error() calls are reported; no PII is sent.
+if os.getenv("SENTRY_DSN"):
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0")),
+        send_default_pii=False,
+    )
+
 # Initialize Firebase Admin
 try:
     if not firebase_admin._apps:

@@ -8,22 +8,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer, noload
 
 from ...core.auth import get_current_user
+from ...core.rate_limit import limit_ai_refresh, limit_ai_search, limit_metadata, limit_pdf, limit_save
 from ...core.database import get_db
 from ...models.bookmark import Bookmark
 from ...models.note import Note
 from ...models.tag import Tag
 from ...schemas.bookmark import (
-    AISearchRequest, AISearchResponse, BookmarkCreate, BookmarkListItem, BookmarkResponse,
-    BookmarkUpdate, URLMetadataRequest, URLMetadataResponse,
+    AIRefreshResult, AISearchRequest, AISearchResponse, BookmarkCreate, BookmarkCreateResult,
+    BookmarkListItem, BookmarkResponse, BookmarkUpdate, URLMetadataRequest, URLMetadataResponse,
 )
 from ...schemas.note import NoteResponse, NoteUpdate
 from ...services.activity_service import log_activity
 from ...services.ai_service import perform_semantic_search
-from ...services.background_tasks import process_bookmark_ai
+from ...services.background_tasks import backfill_bookmarks, process_bookmark_ai, refresh_bookmark
 from ...services.metadata_extractor import extract_metadata
 from ...services.pdf_extractor import MAX_UPLOAD_PDF_SIZE, extract_local_pdf
 from ...services.search import full_text_matches
-from ...services.url_utils import UnsafeURLError, assert_allowed_external_url
+from ...services.url_utils import UnsafeURLError, normalize_external_url
 
 router = APIRouter()
 
@@ -34,6 +35,22 @@ MAX_PAGE_SIZE = 500
 # most recent bookmarks (so purely semantic queries still have something to rank).
 AI_SEARCH_CANDIDATES = 150
 AI_SEARCH_FULL_TEXT_LIMIT = 100
+AI_BACKFILL_BATCH = 25  # bookmarks re-processed per "generate missing summaries" request
+
+
+def _validated_url(url: str) -> str:
+    """Normalise a user-supplied URL: http(s) only, no embedded credentials (400 otherwise).
+    Private/intranet URLs may still be *saved*; extract_metadata just won't fetch them,
+    so they are stored without a preview."""
+    try:
+        return normalize_external_url(url)
+    except UnsafeURLError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _url_variants(url: str) -> list[str]:
+    """The URL with and without a trailing slash, for duplicate detection."""
+    return list({url, url.rstrip("/"), url.rstrip("/") + "/"})
 
 
 async def _get_owned_bookmark(db: AsyncSession, bookmark_id: str, user_id: str) -> Bookmark:
@@ -45,28 +62,32 @@ async def _get_owned_bookmark(db: AsyncSession, bookmark_id: str, user_id: str) 
 
 
 @router.post("/extract-metadata", response_model=URLMetadataResponse)
-async def get_metadata(request: URLMetadataRequest, current_user: str = Depends(get_current_user)):
-    try:
-        safe_url = await assert_allowed_external_url(request.url)
-    except UnsafeURLError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return await extract_metadata(safe_url)
+async def get_metadata(request: URLMetadataRequest, current_user: str = Depends(limit_metadata)):
+    # Private/internal URLs get an empty preview (extract_metadata refuses to fetch them).
+    return await extract_metadata(_validated_url(request.url))
 
 
-@router.post("", response_model=BookmarkListItem)
-async def create_bookmark(bookmark: BookmarkCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
+@router.post("", response_model=BookmarkCreateResult)
+async def create_bookmark(bookmark: BookmarkCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), current_user: str = Depends(limit_save)):
+    url = _validated_url(bookmark.url)
+
+    # Don't create duplicates: return the bookmark that's already saved for this URL.
+    existing = (await db.execute(
+        select(Bookmark).options(*LIST_OPTIONS)
+        .where(Bookmark.user_id == current_user, Bookmark.url.in_(_url_variants(url)))
+        .order_by(Bookmark.created_at).limit(1)
+    )).scalars().first()
+    if existing:
+        return BookmarkCreateResult.model_validate(existing).model_copy(update={"already_saved": True})
+
     # Extract on the server: the page is fetched once and its content never round-trips
-    # through (or can be forged by) the browser.
-    try:
-        safe_url = await assert_allowed_external_url(bookmark.url)
-    except UnsafeURLError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    metadata = await extract_metadata(safe_url)
+    # through (or can be forged by) the browser. Private URLs come back empty (no preview).
+    metadata = await extract_metadata(url)
     db_bookmark = Bookmark(
         id=str(uuid.uuid4()),  # set now so the activity log below can reference it
         user_id=current_user,
-        url=bookmark.url,
-        title=metadata.get("title") or bookmark.title or bookmark.url,
+        url=url,
+        title=metadata.get("title") or bookmark.title or url,
         description=metadata.get("description") or bookmark.description,
         thumbnail_url=metadata.get("image_url") or bookmark.thumbnail_url,
         favicon_url=metadata.get("favicon_url") or bookmark.favicon_url,
@@ -84,7 +105,7 @@ async def create_bookmark(bookmark: BookmarkCreate, background_tasks: Background
 
 
 @router.post("/pdf", response_model=BookmarkListItem)
-async def upload_pdf_bookmark(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
+async def upload_pdf_bookmark(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: AsyncSession = Depends(get_db), current_user: str = Depends(limit_pdf)):
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
@@ -131,7 +152,7 @@ async def read_bookmarks(
 
 
 @router.post("/ai-search", response_model=AISearchResponse)
-async def ai_search_bookmarks(request: AISearchRequest, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
+async def ai_search_bookmarks(request: AISearchRequest, db: AsyncSession = Depends(get_db), current_user: str = Depends(limit_ai_search)):
     # 1. Keyword candidates from Postgres full-text search (title, description, summary, tags).
     fts_stmt = full_text_matches(current_user, request.query, AI_SEARCH_FULL_TEXT_LIMIT, *LIST_OPTIONS)
     text_matches = (await db.execute(fts_stmt)).scalars().all() if fts_stmt is not None else []
@@ -165,6 +186,28 @@ async def ai_search_bookmarks(request: AISearchRequest, db: AsyncSession = Depen
         return {"matching_ids": [b.id for b in text_matches]}
     valid_ids = {b.id for b in bookmarks}
     return {"matching_ids": [i for i in matching_ids if i in valid_ids]}
+
+
+@router.post("/backfill-ai", response_model=AIRefreshResult)
+async def backfill_ai(background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), current_user: str = Depends(limit_ai_refresh)):
+    """Queue AI summary/tags for the user's bookmarks that have no summary yet (e.g. the
+    background task was lost to a restart, or the page couldn't be fetched when saved)."""
+    missing = (Bookmark.user_id == current_user) & (Bookmark.summary.is_(None) | (Bookmark.summary == ""))
+    total = (await db.execute(select(func.count(Bookmark.id)).where(missing))).scalar() or 0
+    ids = (await db.execute(
+        select(Bookmark.id).where(missing).order_by(Bookmark.created_at.desc()).limit(AI_BACKFILL_BATCH)
+    )).scalars().all()
+    if ids:
+        background_tasks.add_task(backfill_bookmarks, list(ids))
+    return {"queued": len(ids), "remaining": max(0, total - len(ids))}
+
+
+@router.post("/{bookmark_id}/refresh-ai", response_model=AIRefreshResult)
+async def refresh_ai(bookmark_id: str, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db), current_user: str = Depends(limit_ai_refresh)):
+    """Regenerate one bookmark's summary/tags, re-fetching the page if it has no content."""
+    bookmark = await _get_owned_bookmark(db, bookmark_id, current_user)
+    background_tasks.add_task(refresh_bookmark, bookmark.id)
+    return {"queued": 1}
 
 
 @router.get("/{bookmark_id}", response_model=BookmarkResponse)
