@@ -7,6 +7,7 @@ from app.models.bookmark import Bookmark
 from app.models.collection import Collection, CollectionBookmark
 from app.models.tag import Tag
 from app.services.ai_service import generate_bookmark_metadata
+from app.services.metadata_extractor import extract_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -64,3 +65,44 @@ async def process_bookmark_ai(bookmark_id: str, url: str, title: str, descriptio
         except Exception:
             await db.rollback()
             logger.exception("AI processing failed for bookmark %s", bookmark_id)
+
+
+def _needs_text(value: str | None, url: str) -> bool:
+    return not value or value.strip() == "" or value == url
+
+
+async def refresh_bookmark(bookmark_id: str) -> None:
+    """Re-run AI for one bookmark. If it has no extracted content (e.g. saved while the page
+    couldn't be fetched), fetch the page again first and fill in the missing preview fields."""
+    async with AsyncSessionLocal() as db:
+        bookmark = (await db.execute(select(Bookmark).where(Bookmark.id == bookmark_id))).scalar_one_or_none()
+        if not bookmark:
+            return
+        if not bookmark.content and bookmark.url.startswith(("http://", "https://")):
+            try:
+                meta = await extract_metadata(bookmark.url)
+                if _needs_text(bookmark.title, bookmark.url) and meta.get("title"):
+                    bookmark.title = meta["title"]
+                if _needs_text(bookmark.description, bookmark.url) and meta.get("description"):
+                    bookmark.description = meta["description"]
+                if not bookmark.thumbnail_url and meta.get("image_url"):
+                    bookmark.thumbnail_url = meta["image_url"]
+                if not bookmark.favicon_url and meta.get("favicon_url"):
+                    bookmark.favicon_url = meta["favicon_url"]
+                if meta.get("content"):
+                    bookmark.content = meta["content"]
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                logger.exception("Re-extracting metadata failed for bookmark %s", bookmark_id)
+        args = (bookmark.id, bookmark.url, bookmark.title or "", bookmark.description or "", bookmark.content)
+    await process_bookmark_ai(*args)
+
+
+async def backfill_bookmarks(bookmark_ids: list[str]) -> None:
+    """Refresh several bookmarks one after another (sequential, to stay inside Gemini quotas)."""
+    for bookmark_id in bookmark_ids:
+        try:
+            await refresh_bookmark(bookmark_id)
+        except Exception:
+            logger.exception("Backfill failed for bookmark %s", bookmark_id)

@@ -53,6 +53,17 @@ class BookmarkListItem(BaseModel):
     tags: List[TagResponse] = []
 
 
+class BookmarkCreateResult(BookmarkListItem):
+    """Result of saving a URL; ``already_saved`` is true when the URL was already in the library
+    (the existing bookmark is returned instead of creating a duplicate)."""
+    already_saved: bool = False
+
+
+class AIRefreshResult(BaseModel):
+    queued: int
+    remaining: int = 0
+
+
 class BookmarkResponse(BookmarkListItem):
     """A single bookmark including its extracted content and note (used by the reader)."""
     content: Optional[str] = None
